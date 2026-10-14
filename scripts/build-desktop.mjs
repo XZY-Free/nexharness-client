@@ -28,6 +28,11 @@ await build({
   logLevel: "info",
 });
 
+// 窗口图标：main 以 __dirname/../app-icon.icns（即 bundle/app-icon.icns）加载——
+// esbuild 产物不含静态资源，随 bundle 复制一份（macOS 由 .app bundle 的 icns 决定，
+// Windows/Linux 打包的窗口图标依赖此文件）。
+await cp("desktop/app-icon.icns", `${bundleDir}/app-icon.icns`);
+
 const rootPackage = JSON.parse(await readFile("package.json", "utf8"));
 const packageJson = {
   name: "nexharness-desktop",

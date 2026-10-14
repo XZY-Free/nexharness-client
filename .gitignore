@@ -3,9 +3,10 @@ node_modules/
 dist/
 desktop/renderer-dist/
 desktop/bundle/
-desktop/package-app/bundle/
-desktop/package-app/renderer/
-desktop/package-app/node_modules/
+desktop/package-app/
+desktop/dist/
+desktop/release/
+/release/
 desktop/dist/
 desktop/downloads/
 desktop/storage/*.db

@@ -48,7 +48,12 @@ export function createMainWindow(rendererOrigin: string): BrowserWindow {
     titleBarStyle: "hiddenInset",
     // 红绿灯定位：与 W2-2 的 38px 标题栏视觉居中对齐（初值 16/14，方案允许 ±2px 调优）
     trafficLightPosition: { x: 16, y: 14 },
-    icon: path.join(__dirname, "../app-icon.icns"),
+    // 窗口图标：macOS 由 .app bundle 的 icns 决定（icon 参数仅 Windows/Linux 有效），
+    // 且 Electron nativeImage 不支持 ic12/PNG 编码的新版 icns 解码——macOS 下不传。
+    // 非 mac 平台打包时若窗口图标生效，需提供 PNG/ICO 格式文件。
+    ...(process.platform === "darwin"
+      ? {}
+      : { icon: path.join(__dirname, "../app-icon.icns") }),
     // W3-1：Desktop 切换为浅色默认主题，背景色同步改为浅色 --background 等值（#ffffff），
     // 消除启动/刷新瞬间"黑闪"；最终值由 globals.css 的 :root --background 决定。
     // W3-6：vibrancy 评估性实验（macOS sidebar 毛玻璃），效果待用户确认后决定去留。
