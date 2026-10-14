@@ -1,0 +1,212 @@
+/**
+ * Agent 控制面合同 — 稳定 DTO。
+ *
+ * Web 端和桌面端共用此合同消费服务端 API。
+ * 合同字段与 /admin/api wire format (snake_case) 对齐。
+ *
+ * 禁止：
+ * - 页面直接引用数据库 Record；
+ * - 通过 currentRevisionId 推断执行资格；
+ * - 通过 revisionState 推断 Publication 状态。
+ */
+
+// ─── Agent ────────────────────────────────────────────────
+
+/** Agent 生命周期状态 — 服务端权威枚举。 */
+export type AgentLifecycleState = "draft" | "enabled" | "disabled" | "retired";
+
+/** Agent 列表项（不含 Revision 详情）。 */
+export interface AgentDTO {
+  id: string;
+  agent_key: string;
+  display_name: string;
+  description: string | null;
+  lifecycle_state: AgentLifecycleState;
+  current_revision_id: string | null;
+  owner_user_id: string;
+  version_no: number;
+  updated_at: string | null;
+}
+
+/** Agent 列表响应。 */
+export interface AgentListResponse {
+  items: AgentDTO[];
+  total: number;
+}
+
+// ─── AgentRevision ────────────────────────────────────────
+
+/** AgentRevision 状态 — 服务端权威枚举。 */
+export type AgentRevisionState = "draft" | "published" | "withdrawn";
+
+/** AgentRevision 列表与命令响应的稳定摘要。 */
+export interface AgentRevisionSummaryDTO {
+  id: string;
+  agent_id: string;
+  revision_no: number;
+  revision_state: AgentRevisionState;
+  agent_contract_snapshot_id: string | null;
+  etag: string;
+}
+
+/** AgentRevision 详情。 */
+export interface AgentRevisionDTO {
+  id: string;
+  agent_id: string;
+  revision_no: number;
+  revision_state: AgentRevisionState;
+  /** 绑定的不可变 AgentContractSnapshot id（权威外部合同来源）。 */
+  agent_contract_snapshot_id: string;
+  /** 当前 Publication Record — 不为 null 时表示已发布。 */
+  publication_record_id: string | null;
+  /** 当前 Withdrawal Record — 不为 null 时表示已撤回。 */
+  withdrawal_record_id: string | null;
+  /** 执行资格 — 由服务端 Eligibility Policy 计算，客户端禁止推断。 */
+  execution_eligible: boolean;
+  /** 资格不足原因 — eligible 为 false 时非空。 */
+  ineligibility_reasons: string[];
+  created_at: string;
+  published_at: string | null;
+  /** 绑定的接口需求（企业用户上下文 allowed_fields / host controls 等只读展示用；可为 null）。 */
+  agent_interface_requirements: Record<string, unknown> | null;
+}
+
+/** AgentRevision 列表响应。 */
+export interface AgentRevisionListResponse {
+  items: AgentRevisionSummaryDTO[];
+  total: number;
+}
+
+/** 创建 Draft AgentRevision 请求。 */
+export interface CreateAgentRevisionRequest {
+  /** 绑定的不可变 AgentContractSnapshot id（发布强约束；必填非空白）。 */
+  agent_contract_snapshot_id: string;
+  model_policy: Record<string, unknown>;
+  permission_requirements: Record<string, unknown>;
+  delegation_policy: Record<string, unknown>;
+  agent_interface_requirements: Record<string, unknown>;
+}
+
+export interface PublishAgentRevisionRequest {
+  release_notes: string;
+}
+
+export interface PublishAgentRevisionResponse {
+  id: string;
+  revision_state: "published";
+  published_at: string;
+  audit_event_id: string;
+}
+
+export interface WithdrawAgentRevisionRequest {
+  reason_code: string;
+  reason: string;
+}
+
+export interface WithdrawAgentRevisionResponse {
+  id: string;
+  revision_state: "withdrawn";
+  withdrawal_record_id: string;
+  current_revision_id: string | null;
+  audit_event_id: string;
+}
+
+// ─── AgentContractSnapshot ────────────────────────────────
+
+export interface LocalizedTextDTO {
+  "zh-CN": string | null;
+  en: string | null;
+}
+
+export interface AgentContractCapabilityDTO {
+  key: string;
+  name: LocalizedTextDTO;
+  description: LocalizedTextDTO;
+  tags: string[];
+  examples: string[];
+  input_modes: string[];
+  output_modes: string[];
+}
+
+export interface AgentContractContextDTO {
+  key: string;
+  name: LocalizedTextDTO;
+  description: LocalizedTextDTO;
+  necessity: "required" | "preferred" | "accepted";
+  applies_to: string[] | null;
+  trust_requirement: string | null;
+  declaration_source: "provider_declared" | "operator_declared";
+}
+
+export interface AgentContractSnapshotDTO {
+  snapshot_id: string;
+  contract_version: string;
+  public_agent_version: string;
+  protocol_type: string;
+  protocol_contract_revision: string;
+  contract_digest: string;
+  /** Capability Manifest canonical digest（能力摘要展示用）。 */
+  capability_digest: string;
+  /** Invocation Context Contract canonical digest（上下文摘要展示用）。 */
+  context_digest: string;
+  interaction: {
+    streaming_transport: boolean;
+    incremental_content: boolean;
+    input_required: boolean;
+    resume: boolean;
+    cancel: boolean;
+    durable_task_recovery: boolean;
+    supported_locales: string[];
+  };
+  capabilities: AgentContractCapabilityDTO[];
+  invocation_context: AgentContractContextDTO[];
+  result_contract: {
+    fields: string[];
+    error_codes: string[];
+    notes: LocalizedTextDTO;
+  };
+  captured_at: string;
+}
+
+export interface AgentContractListResponse {
+  items: AgentContractSnapshotDTO[];
+  total: number;
+}
+
+// ─── Agent Contract 登记（POST /admin/api/agent-registrations） ────
+
+/** 登记请求：顶层恰为 protocol + contract（禁止 URL/Git/源码路径/endpoint/凭证字段）。 */
+export interface RegisterAgentContractRequest {
+  protocol: {
+    type: string;
+    contract_revision: string;
+  };
+  contract: unknown;
+}
+
+/** 登记响应：Agent 摘要 + 结构化快照投影（无原始合同回显）。 */
+export interface RegisterAgentContractResponse {
+  agent: {
+    id: string;
+    agent_key: string;
+    display_name: string;
+    lifecycle_state: AgentLifecycleState;
+  };
+  contract: AgentContractSnapshotDTO;
+}
+
+// ─── CredentialRef（bearer 只能选择已有 CredentialRef） ───────────────
+
+/** CredentialRef 摘要（无 vaultRef/secret 值）。 */
+export interface CredentialRefSummaryDTO {
+  id: string;
+  provider: string;
+  fingerprint: string;
+  lifecycle_state: string;
+  expires_at: string | null;
+}
+
+export interface CredentialRefListResponse {
+  items: CredentialRefSummaryDTO[];
+  total: number;
+}

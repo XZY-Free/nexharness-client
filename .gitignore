@@ -1,0 +1,20 @@
+# 依赖与构建产物
+node_modules/
+dist/
+desktop/renderer-dist/
+desktop/bundle/
+desktop/package-app/bundle/
+desktop/package-app/renderer/
+desktop/package-app/node_modules/
+desktop/dist/
+desktop/downloads/
+desktop/storage/*.db
+desktop/storage/*.db-*
+
+# 本地与系统
+.DS_Store
+*.log
+tmp/
+.env.local
+.vite/
+tsconfig.tsbuildinfo

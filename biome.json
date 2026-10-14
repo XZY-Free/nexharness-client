@@ -1,0 +1,53 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "files": {
+    "ignore": [
+      "dist/**",
+      "drizzle/**",
+      ".next/**",
+      ".playwright-cli/**",
+      "node_modules/**",
+      "workspaces/**",
+      "docs/**",
+      ".omc/**",
+      ".omx/**",
+      ".nex/**",
+      ".codify/**",
+      "desktop/dist/**",
+      "desktop/release/**",
+      "desktop/bundle/**",
+      "desktop/renderer-dist/**",
+      "desktop/package-app/**",
+      "output/**",
+      "release/**",
+      "tmp/**"
+    ]
+  },
+  "overrides": [
+    {
+      "include": ["components/ui/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noLabelWithoutControl": "off"
+          }
+        }
+      }
+    }
+  ]
+}

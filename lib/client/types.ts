@@ -1,0 +1,729 @@
+/**
+ * Thread Client Types（线程客户端类型）。
+ *
+ * 事实源：
+ * - docs/architecture/api-and-events.md /（Item 响应、SSE 投影）
+ * - docs/architecture/contracts-and-conformance.md（错误 Envelope）
+ * - lib/persistence/schema/conversation.ts（Thread/ThreadItem/ThreadEvent 服务端 schema）
+ *
+ * 与 HTTP wire 对齐：
+ * - 字段名一律使用 snake_case（与服务端 projectItem/projectEvent 输出一致）。
+ * - 日期使用 ISO 8601 字符串（服务端 toISOString）。
+ * - content / payload 为已脱敏的 JSON，由 reducer 按 item_type/event_type 解读。
+ *
+ * 不引入服务端 drizzle schema 类型，避免把 node:crypto/MySQL 适配层拉进浏览器 bundle。
+ */
+
+import type { DesktopOperationCategory, DesktopOperationResult } from "@/lib/desktop/capabilities";
+
+// ─── Thread Shell 与创建 ────────────────────────────────────
+
+export interface ClientThreadSummary {
+  readonly id: string;
+  readonly title: string | null;
+  /** 侧栏快速状态；null 表示会话尚无 Turn。 */
+  readonly latest_turn_state?: string | null;
+}
+
+export interface ClientAgentSummary {
+  readonly id: string;
+  readonly agent_key: string;
+  readonly display_name: string;
+}
+
+export interface ClientThreadShellResponse {
+  readonly viewer_id: string;
+  /** 当前员工的真实显示名；账户菜单只展示该公开字段，不暴露内部 user id。 */
+  readonly viewer_name: string;
+  readonly threads: readonly ClientThreadSummary[];
+  /**
+   * 平台默认模型（服务端配置事实源 aiConfig.chatModel 的投影，snake_case）。
+   *
+   * Web/Desktop 新会话或无显式模型选择时，用它立即展示默认模型，无需等待
+   * /api/models 的异步发现。仅用于显示；发送时未显式选择仍以 modelRef=null
+   * 交由后端冻结平台默认，不改业务模型选择语义。
+   */
+  readonly default_model_ref: string;
+}
+
+export interface ClientNewThreadSubmission {
+  readonly permissionMode?: "auto" | "ask" | "full_access";
+  readonly text: string;
+  readonly modelRef: string | null;
+  /** Desktop 选择的逻辑 Workspace；null/undefined 表示使用 Cloud/无本地目录。 */
+  readonly workspaceId?: string | null;
+  /**
+   * 员工显式选择的 Agent id；只形成下一新 Turn 的 preferred directive，不写 Thread Agent。
+   * null/undefined = 不带 agent_use，本 Turn 不继承上一 Turn。
+   */
+  readonly agentId?: string | null;
+  /** 首条消息随附的本地文件；创建 Thread 后上传，再绑定到首个 Turn。 */
+  readonly files?: readonly File[];
+}
+
+// ─── Item ────────────────────────────────────────────────────
+
+/** Item 类型（与服务端 THREAD_ITEM_TYPES 一致）。 */
+export type ClientItemType =
+  | "user_message"
+  | "user_guidance"
+  | "assistant_message"
+  | "tool_call"
+  | "artifact"
+  | "job_result"
+  | "child_thread"
+  | "user_action"
+  | "host_action";
+
+/** Item 状态（与服务端 THREAD_ITEM_STATES 一致）。 */
+export type ClientItemState = "pending" | "completed" | "failed" | "superseded" | "cancelled";
+
+/**
+ * GET /api/threads/{thread_id}/items 返回的 Item 投影（）。
+ *
+ * 与服务端 app/api/threads/[threadId]/items/route.ts 的 projectItem 输出一致。
+ */
+export interface ClientItem {
+  readonly id: string;
+  readonly turn_id: string;
+  readonly item_sequence: number;
+  readonly item_type: ClientItemType;
+  readonly item_state: ClientItemState;
+  /** 已脱敏的内容 JSON，由 reducer 按 item_type 解读。 */
+  readonly content: unknown;
+  /** ISO 8601 时间字符串。 */
+  readonly created_at: string;
+}
+
+/** Item 列表响应（）。 */
+export interface ClientItemsResponse {
+  readonly items: readonly ClientItem[];
+  readonly next_cursor: string | null;
+  readonly latest_event_cursor: {
+    readonly sequence: number;
+    readonly event_id: string | null;
+  } | null;
+}
+
+// ─── Event ───────────────────────────────────────────────────
+
+/**
+ * SSE data 投影（）。
+ *
+ * 与服务端 app/api/threads/[threadId]/events/route.ts 的 projectEvent 输出一致。
+ * event_type 通过 SSE `event:` 行传递，不在 data 内重复。
+ */
+import type { ActivityEntry } from "@/lib/client/activity-projection";
+
+export interface ClientEventPayload {
+  readonly event_id: string;
+  readonly sequence: number;
+  readonly schema_version: number;
+  readonly thread_id: string;
+  readonly turn_id: string | null;
+  readonly item_id: string | null;
+  readonly occurred_at: string;
+  /** 已脱敏的事件负载。 */
+  readonly payload: unknown;
+}
+
+/** 完整 SSE 事件（含 event 行）。 */
+export interface ClientEvent extends ClientEventPayload {
+  /** SSE event 行（如 thread.created、turn.accepted、item.created、stream.resumed）。 */
+  readonly event_type: string;
+}
+
+/**
+ * 执行代际的**线上形态**（A11）。
+ *
+ * 与 `lib/runtime/thread-generation.ts` 的同一份契约一一对应（snake_case 线上名）。
+ * `lease_epoch` 是十进制字符串：**禁止** Number 转换（`2^53` 以上会静默丢精度，
+ * 而 epoch 是执行权世代号），比较按 BigInt 或精确字符串相等。
+ */
+export interface ClientTransientGeneration {
+  readonly invocation_id: string;
+  readonly attempt_id: string;
+  readonly ownership_id: string;
+  readonly lease_epoch: string;
+}
+
+/**
+ * 不进入持久 sequence 的模型正文增量（A11：必须携带**完整**代际）。
+ *
+ * 缺 Invocation/Owner/Attempt/epoch 中任何一项都不构成可拼接的增量——parser 直接拒绝，
+ * 不回退成"只按 turn_id 拼接"的旧协议。
+ */
+export interface ClientTransientDelta {
+  readonly transient_id: string;
+  readonly thread_id: string;
+  readonly turn_id: string;
+  readonly generation: ClientTransientGeneration;
+  readonly occurred_at: string;
+  readonly delta: string;
+}
+
+/** `stream.generation` 中单个 Turn 的权威代际；`generation` 为 null 表示该 Turn 无活动执行。 */
+export interface ClientTurnGeneration {
+  readonly turn_id: string;
+  readonly generation: ClientTransientGeneration | null;
+}
+
+/**
+ * `stream.generation` 控制消息负载：服务端权威展示代际快照。
+ *
+ * 这是 SSE 控制消息，不是持久 delta 账本，不推进业务 cursor。
+ * `issued_revision` 是服务端**单进程内**发号（接管不一定新增持久事件，只靠
+ * `baseline_sequence` 无法排序）；客户端每次新连接重置比较基准，因此不假设全局序。
+ */
+export interface ClientGenerationBaseline {
+  readonly thread_id: string;
+  readonly baseline_sequence: number;
+  readonly issued_revision: number;
+  readonly generations: readonly ClientTurnGeneration[];
+}
+
+// ─── Error ───────────────────────────────────────────────────
+
+/**
+ * API Error Envelope（接口错误封装）。
+ *
+ * 与服务端 lib/http.ts 的 apiError 输出一致。
+ */
+export interface ClientErrorBody {
+  readonly error: {
+    readonly code: string;
+    readonly message: string;
+    readonly request_id: string;
+    readonly retryable: boolean;
+    readonly details?: Record<string, unknown>;
+  };
+}
+
+// ─── 流生命周期 ──────────────────────────────────────────────
+
+/** SSE 连接状态。 */
+export type ClientStreamStatus =
+  /** 尚未连接。 */
+  | "idle"
+  /** 正在建立连接（fetch 未完成 header）。 */
+  | "connecting"
+  /** 已连接，正在接收 backlog 或实时事件。 */
+  | "open"
+  /** 收到 stream.backpressure 或网络中断，准备重连。 */
+  | "reconnecting"
+  /** 服务端告知 EVENT_CURSOR_EXPIRED，已退化为 snapshot 重载。 */
+  | "resnapshot"
+  /** 用户显式停止或组件卸载，连接已关闭且不会自动重连。 */
+  | "closed"
+  /** 无法恢复的失败（鉴权失败、404、400 等）。 */
+  | "failed";
+
+// ─── 客户端状态 ──────────────────────────────────────────────
+
+/**
+ * 员工端 Thread 投影状态。
+ *
+ * reducer 输出 = 渲染输入。所有字段都是 immutable。
+ *
+ * 不变量：
+ * - items 按 item_sequence 严格升序，无重复 id。
+ * - lastAppliedEventSequence 单调递增，永不倒退。
+ * - appliedEventIds 是 lastAppliedEventSequence 的精确历史，用于跨重连去重。
+ * - latestEventCursor 与服务端 latest_event_cursor 同步；断线重连以它作为 Last-Event-ID。
+ */
+export interface ThreadProjectionState {
+  /** Thread id。 */
+  readonly threadId: string;
+  /** 过程透明日志流（活跃回合 live ring；合同 v2.3）。 */
+  readonly activity: readonly ActivityEntry[];
+  /** 当前 Item 投影（按 item_sequence 升序）。 */
+  readonly items: readonly ClientItem[];
+  /** Item id → Item（快速查找，派生于 items）。 */
+  readonly itemsById: Readonly<Record<string, ClientItem>>;
+  /** 已应用的最大 event sequence。 */
+  readonly lastAppliedEventSequence: number;
+  /** 已应用的 event_id 集合（用于跨重连/重复 SSE 去重）。 */
+  readonly appliedEventIds: ReadonlySet<string>;
+  /** 服务端告知的 latest_event_cursor（snapshot 时写入）。 */
+  readonly latestEventCursor: {
+    readonly sequence: number;
+    readonly event_id: string | null;
+  } | null;
+  /**
+   * 内部标志：snapshot 之后是否已消费过至少一条新事件。
+   *
+   * snapshot 后的第一条事件不要求 sequence 严格连续（服务端在 snapshot 期间可能
+   * 已写入多条，SSE 重连后从 cursor 补发，第一条不必 = cursor + 1 也算正常）。
+   * 之后的每条事件必须严格 sequence = lastApplied + 1，否则视为 gap。
+   */
+  readonly hasAppliedEventSinceSnapshot: boolean;
+  /** SSE 连接状态。 */
+  readonly streamStatus: ClientStreamStatus;
+  /** 当前重连尝试次数（0 = 未处于重连）。用于展示"正在重新连接 2/5"。 */
+  readonly reconnectAttempt: number;
+  /** 重连次数上限（与 SSE 客户端 maxRetries 一致）。 */
+  readonly reconnectMax: number;
+  /** 当前可见错误（中文语义 + 可恢复动作已映射）。null 表示无错误。 */
+  readonly visibleError: ClientVisibleError | null;
+  /** snapshot 加载状态。 */
+  readonly snapshotStatus: "idle" | "loading" | "ready" | "failed";
+  /**
+   * A11：服务端权威展示代际基线。
+   *
+   * `null` = 本连接尚未收到基线（或刚重连、比较基准已重置）：此期间 transient 只暂存，
+   * 不拼接。收到后即成为判定"这条 delta 是否属于当前展示代际"的唯一依据。
+   */
+  readonly generationBaseline: ClientGenerationBaseline | null;
+  /**
+   * A11：权威基线**未覆盖**的 Turn 的暂存增量（按 turn 分桶、保持到达顺序、有界）。
+   *
+   * 下一个覆盖该 Turn 的权威基线到来时重放；若权威事实判定"无活动执行"则整桶丢弃，
+   * 绝不自作主张拼进上一代正文。
+   */
+  readonly pendingTransients: Readonly<Record<string, readonly ClientTransientDelta[]>>;
+}
+
+/** 已映射为员工可理解语义的错误。 */
+export interface ClientVisibleError {
+  /** 稳定错误码（如 EVENT_CURSOR_EXPIRED）。 */
+  readonly code: string;
+  /** 中文标题（短句）。 */
+  readonly title: string;
+  /** 中文详细描述。 */
+  readonly description: string;
+  /** 是否可恢复。 */
+  readonly retryable: boolean;
+  /** 可恢复动作（用户可读）。 */
+  readonly recoveryAction: "reconnect" | "resnapshot" | "reload_page" | "contact_admin" | "none";
+  /** 原始 request_id（诊断用，不直接展示给员工）。 */
+  readonly requestId: string | null;
+}
+
+// ─── Thread 详情（S10-W02） ──────────────────────────────────
+
+/** GET /api/threads/{thread_id} 返回的 Thread 投影。 */
+export interface ClientThread {
+  readonly tool_permission_mode?: "auto" | "ask" | "full_access";
+  readonly id: string;
+  readonly title: string | null;
+  readonly active_goal_id: string | null;
+  readonly default_workspace_id: string | null;
+  readonly default_model_ref: string | null;
+  readonly default_environment_definition_id: string | null;
+  readonly lifecycle_state: "active" | "archived" | "deleted";
+  readonly last_activity_at: string;
+  readonly last_event_sequence: number;
+  readonly pending_queue_version_no: number;
+  readonly version_no: number;
+  readonly created_at: string;
+}
+
+/** GET /api/threads/{thread_id} 返回的 Goal 投影。 */
+export interface ClientGoal {
+  readonly id: string;
+  readonly thread_id: string;
+  readonly objective: string;
+  readonly success_criteria: unknown;
+  readonly constraints: unknown;
+  readonly current_state: unknown;
+  readonly goal_state: "active" | "blocked" | "completed" | "cancelled";
+  readonly created_at: string;
+  readonly completed_at: string | null;
+}
+
+/** Turn controls（服务端 Binding 派生，05 §9；终态 Turn 恒 false）。 */
+export interface ClientTurnControls {
+  readonly cancel_supported: boolean;
+  readonly resume_supported: boolean;
+  readonly steer_supported: boolean;
+}
+
+/** 用户在本 Turn 显式声明的 Agent 偏好；不代表实际发生过调用。 */
+export interface ClientAgentUse {
+  readonly mode: "preferred";
+  readonly agent_id: string;
+  readonly display_name: string | null;
+}
+
+/** 真实 AgentCall 的员工端安全摘要；不包含请求上下文、结果正文或凭证。 */
+export interface ClientAgentCallSummary {
+  readonly call_id: string;
+  readonly parent_invocation_id: string;
+  readonly agent_id: string;
+  readonly display_name: string | null;
+  readonly action_id: string | null;
+  readonly state: string;
+  readonly created_at: string;
+  readonly started_at: string | null;
+  readonly waiting_at: string | null;
+  readonly finished_at: string | null;
+  readonly duration_ms: number | null;
+  readonly error_code: string | null;
+}
+
+/** 本 Turn 实际发生的 AgentCall 集合，与 agent_use 偏好分开投影。 */
+export interface ClientActualAgentCalls {
+  readonly count: number;
+  readonly active_call_id: string | null;
+  readonly last_state: string | null;
+  readonly selected_agent_called: boolean;
+  readonly selected_but_unused: boolean;
+  readonly calls: readonly ClientAgentCallSummary[];
+}
+
+/** GET /api/threads/{thread_id}/turns 返回的 Turn 投影。 */
+export interface ClientTurn {
+  readonly controls: ClientTurnControls;
+  readonly id: string;
+  readonly agent_use: ClientAgentUse | null;
+  readonly actual_agent_calls: ClientActualAgentCalls;
+  readonly turn_sequence: number;
+  readonly trigger_type: string;
+  readonly trigger_ref: string | null;
+  readonly trigger_item_id: string | null;
+  readonly turn_state: string;
+  readonly active_invocation_id: string | null;
+  readonly latest_invocation_id: string | null;
+  readonly adopted_invocation_id: string | null;
+  readonly final_item_id: string | null;
+  readonly error_code: string | null;
+  readonly regeneration_no: number;
+  readonly accepted_at: string;
+  readonly started_at: string | null;
+  readonly waiting_at: string | null;
+  readonly finished_at: string | null;
+}
+
+/** GET /api/threads/{thread_id} 响应体。 */
+export interface ClientThreadResponse {
+  readonly thread: ClientThread;
+  readonly active_goal: ClientGoal | null;
+  readonly latest_turn: ClientTurn | null;
+}
+
+/** GET /api/threads/{thread_id}/turns 响应体。 */
+export interface ClientTurnsResponse {
+  readonly turns: readonly ClientTurn[];
+}
+
+// ─── PendingInput（S10-W03） ────────────────────────────────
+
+/** PendingInput 状态（与服务端 PENDING_INPUT_STATES 一致）。 */
+export type ClientPendingInputState = "pending" | "admitted" | "removed";
+
+/** GET /api/threads/{thread_id}/pending-inputs 中的单条 PendingInput 投影。 */
+export interface ClientPendingInput {
+  readonly id: string;
+  readonly queue_position: number;
+  /** 结构化输入，至少含 type 字段。 */
+  readonly input: {
+    readonly type: string;
+    readonly text?: string;
+    readonly [key: string]: unknown;
+  };
+  /** 资源 ETag（如 "pending-3"）。 */
+  readonly etag: string;
+}
+
+/** GET /api/threads/{thread_id}/pending-inputs 响应体。 */
+export interface ClientPendingInputListResponse {
+  readonly thread_id: string;
+  /** 队列 ETag（如 "pending-queue-5"）。 */
+  readonly queue_etag: string;
+  readonly pending_inputs: readonly ClientPendingInput[];
+}
+
+/** POST /api/threads/{thread_id}/pending-inputs 响应体（201）。 */
+export interface ClientCreatePendingInputResponse {
+  readonly pending_input: {
+    readonly id: string;
+    readonly thread_id: string;
+    readonly input_state: ClientPendingInputState;
+    readonly queue_position: number;
+    readonly input: ClientPendingInput["input"];
+    readonly etag: string;
+  };
+  readonly queue_etag: string;
+}
+
+/** PATCH /api/pending-inputs/{pending_input_id} 响应体（200）。 */
+export interface ClientEditPendingInputResponse {
+  readonly pending_input: {
+    readonly id: string;
+    readonly thread_id: string;
+    readonly input_state: ClientPendingInputState;
+    readonly queue_position: number;
+    readonly input: ClientPendingInput["input"];
+    readonly etag: string;
+  };
+  readonly queue_etag: string;
+}
+
+/** DELETE /api/pending-inputs/{pending_input_id} 响应体（200）。 */
+export interface ClientDeletePendingInputResponse {
+  readonly pending_input: {
+    readonly id: string;
+    readonly thread_id: string;
+    readonly input_state: "removed";
+    readonly removed_at: string;
+  };
+  readonly queue_etag: string;
+}
+
+// ─── Steer / Interrupt（S10-W03） ──────────────────────────
+
+/** POST /api/turns/{turn_id}/steer 响应体（202 Accepted，异步命令）。 */
+export interface ClientSteerResponse {
+  readonly turn_id: string;
+  readonly turn_state: string;
+  /** 固定 "queued"：命令已入队，等 Runtime ack。前端不应在 ack 前宣称已引导。 */
+  readonly steer_state: "queued";
+  readonly guidance_item_id: string;
+  readonly command: { readonly id: string; readonly command_state: "queued" };
+  readonly event_id: string;
+}
+
+/** POST /api/turns/{turn_id}/interrupt 响应体（202 Accepted，异步命令）。 */
+export interface ClientInterruptResponse {
+  readonly turn_id: string;
+  readonly turn_state: string;
+  /** 固定 "requested"：停止请求已入队，等 Runtime ack。 */
+  readonly interrupt_state: "requested";
+  readonly command: { readonly id: string; readonly command_state: "queued" };
+  /** 固定 true：Stop 不撤销已发生副作用，tool 副作用已生效。 */
+  readonly already_completed_effects_preserved: true;
+  readonly event_id: string;
+}
+
+// ─── Catalog（S10-W04） ─────────────────────────────────────
+
+/** Catalog 资源类型（与服务端 CatalogResourceType 一致）。 */
+export type ClientCatalogResourceType =
+  | "agent"
+  | "skill"
+  | "tool"
+  | "knowledge"
+  | "runtime"
+  | "model"
+  | "connection";
+
+/** GET /api/catalog/options 返回的单条目录条目（CatalogSearchItem）。 */
+export interface ClientCatalogItem {
+  readonly resource_type: ClientCatalogResourceType;
+  readonly resource_id: string;
+  readonly display_name: string;
+  readonly description: string | null;
+  /** lifecycle 状态（如 enabled/disabled）。 */
+  readonly lifecycle_state: string;
+  readonly visibility_summary: string;
+  readonly owner_user_id: string | null;
+  readonly tags: readonly string[] | null;
+  /** 资源级 ETag（catalog-{revision}）。 */
+  readonly etag: string;
+}
+
+/** GET /api/catalog/options 响应体。 */
+export interface ClientCatalogListResponse {
+  readonly items: readonly ClientCatalogItem[];
+  readonly next_cursor: string | null;
+  /** 当前租户+employee audience 的 catalogRevision。 */
+  readonly catalog_revision: number;
+}
+
+// ─── UserAction 通用解析（S10-W05） ────────────────────────
+
+/** POST /api/threads/{thread_id}/user-actions/{request_id}/resolve 响应体（200）。 */
+export interface ClientUserActionResolveResponse {
+  readonly thread_id: string;
+  readonly request_id: string;
+  readonly request_type: "confirmation" | "auth" | "grant" | "input";
+  readonly purpose: string | null;
+  readonly resolution: "approve" | "deny" | "submit" | "cancel";
+  readonly request_state: "resolved";
+  readonly invocation_id: string;
+  readonly invocation_state: string;
+  readonly resume_command_id: string;
+  readonly resume_command_state: string;
+  readonly grant_id?: string;
+  readonly event_ids: readonly string[];
+}
+
+// ─── Environment / Desktop 任务操作台（S10-W06） ───────────
+
+/** 环境类型（与服务端 ENVIRONMENT_TYPES 一致）。 */
+export type ClientEnvironmentType = "desktop" | "cloud" | "remote" | "sandbox";
+
+/** Lease 状态（与服务端 ENVIRONMENT_LEASE_STATES 一致）。 */
+export type ClientEnvironmentLeaseState =
+  | "allocated"
+  | "active"
+  | "releasing"
+  | "released"
+  | "expired"
+  | "lost";
+
+/**
+ * 员工端可见的 Environment 可用性状态。
+ *
+ * 推导规则：
+ * - no_environment：Thread 未配置 default_environment_definition_id。
+ * - cloud：Environment 类型为 cloud/remote/sandbox，或 Desktop Lease 状态为 active 但设备非本机。
+ * - online_desktop：Desktop Lease active + 设备在线 + 是当前 Desktop 设备。
+ * - pending_device：Desktop Lease active 但设备离线，或 leaseState 为 allocated/releasing。
+ * - offline_desktop：Desktop Lease 终态（released/expired/lost）或 ExecutionOwnership released/lost。
+ */
+export type ClientEnvironmentAvailability =
+  | "no_environment"
+  | "cloud"
+  | "online_desktop"
+  | "pending_device"
+  | "offline_desktop";
+
+/** EnvironmentDefinition 投影（GET /threads/{id}/environment 返回）。 */
+export interface ClientEnvironmentDefinition {
+  readonly id: string;
+  readonly environment_key: string;
+  readonly display_name: string;
+  readonly description: string | null;
+  readonly environment_type: ClientEnvironmentType;
+  readonly lifecycle_state: "active" | "archived" | "deleted";
+}
+
+/** EnvironmentLease 投影。 */
+export interface ClientEnvironmentLease {
+  readonly id: string;
+  readonly environment_definition_id: string;
+  readonly invocation_id: string;
+  readonly attempt_id: string;
+  /** Desktop Lease 必含；Cloud/Remote/Sandbox 为 null。 */
+  readonly device_id: string | null;
+  readonly lease_state: ClientEnvironmentLeaseState;
+  readonly allocated_at: string;
+  readonly last_heartbeat_at: string | null;
+  readonly expires_at: string | null;
+  readonly released_at: string | null;
+}
+
+/** ExecutionOwnership 投影。 */
+export interface ClientExecutionOwnership {
+  readonly id: string;
+  readonly invocation_id: string;
+  readonly device_id: string | null;
+  readonly environment_lease_id: string | null;
+  readonly ownership_state: "active" | "released" | "lost";
+  readonly lease_epoch: number;
+  readonly acquired_at: string;
+  readonly last_heartbeat_at: string | null;
+  readonly released_at: string | null;
+}
+
+/** GET /api/threads/{thread_id}/environment 响应体。 */
+export interface ClientEnvironmentStatusResponse {
+  readonly thread_id: string;
+  /** 当前 Thread 配置的默认 EnvironmentDefinition；null 表示未配置。 */
+  readonly environment_definition: ClientEnvironmentDefinition | null;
+  /** 当前 active Invocation 的 Lease；null 表示无活跃 Lease。 */
+  readonly active_lease: ClientEnvironmentLease | null;
+  /** 当前 active Invocation 的 ExecutionOwnership；null 表示无活跃 ownership。 */
+  readonly active_ownership: ClientExecutionOwnership | null;
+  /** 推导后的可用性状态（前端渲染依据）。 */
+  readonly availability: ClientEnvironmentAvailability;
+  /** 当前 active Invocation id；null 表示无活跃 Invocation。 */
+  readonly active_invocation_id: string | null;
+  /** S10-W07：接管条件聚合（无 active ownership 时为空 conditions）。 */
+  readonly takeover_conditions: ClientTakeoverConditions;
+}
+
+/** 接管条件聚合（GET /environment 返回）。 */
+export interface ClientTakeoverConditions {
+  /** 是否允许接管。 */
+  readonly can_takeover: boolean;
+  /** 阻塞原因列表（中文，前端直接展示）。 */
+  readonly blocking_reasons: readonly string[];
+  /** 未完成 ToolCall 数量（proposed/paused/queued/running）。 */
+  readonly pending_tool_calls: number;
+  /** unknown_effect 状态的 EffectRecord 数量。 */
+  readonly unknown_effects: number;
+  /** 该 Invocation 持有的活跃写锁数量。 */
+  readonly active_write_locks: number;
+  /** owner 心跳是否陈旧（超过阈值）。 */
+  readonly owner_heartbeat_stale: boolean;
+  /** 当前 owner 设备 id（如有）。 */
+  readonly owner_device_id: string | null;
+  /** 当前 ownership id（如有）。 */
+  readonly ownership_id: string | null;
+}
+
+/** POST /api/threads/{thread_id}/environment/takeover 响应体（S10-W07）。 */
+export interface ClientTakeoverResponse {
+  readonly thread_id: string;
+  readonly ownership_id: string;
+  readonly lease_id: string | null;
+  readonly revoked_lock_ids: readonly string[];
+  readonly event_id: string;
+  readonly previous_lease_epoch: number;
+  readonly reason_code: string;
+}
+
+// ─── Desktop 本地操作（S10-W06） ──────────────────────────
+
+// 直接复用底层类型，避免双源不一致。
+export type { DesktopOperationCategory, DesktopOperationResult } from "@/lib/desktop/capabilities";
+
+/** Desktop 操作能力描述（操作面板展示）。 */
+export interface DesktopOperationCapability {
+  readonly category: DesktopOperationCategory;
+  readonly operation: string;
+  readonly display_name: string;
+  readonly description: string;
+  /** 是否高影响（需要 UserAction 确认）。 */
+  readonly high_impact: boolean;
+  /** 是否当前可用（依赖 Desktop 环境 + 权限）。 */
+  readonly enabled: boolean;
+}
+
+// ─── Reducer Action ──────────────────────────────────────────
+
+/** Reducer 输入。 */
+export type ThreadProjectionAction =
+  /** 加载 snapshot 成功；重置 lastAppliedEventSequence 为 latest_event_cursor.sequence。 */
+  | {
+      readonly type: "snapshot.loaded";
+      readonly items: readonly ClientItem[];
+      readonly latestEventCursor: {
+        readonly sequence: number;
+        readonly event_id: string | null;
+      } | null;
+    }
+  /** snapshot 加载失败。 */
+  | { readonly type: "snapshot.failed"; readonly error: ClientVisibleError }
+  /** snapshot 开始加载。 */
+  | { readonly type: "snapshot.loading" }
+  /** SSE 事件到达（已通过去重和 sequence 检查）。 */
+  | { readonly type: "event.received"; readonly event: ClientEvent }
+  /** response.delta 到达；只更新临时 Agent Item，不推进持久游标。 */
+  | { readonly type: "stream.delta"; readonly event: ClientTransientDelta }
+  /**
+   * A11：`stream.generation` 控制消息到达（权威代际基线）。
+   *
+   * 不推进持久游标；reducer 据此隔离/清理旧的临时正文并重放被基线覆盖的暂存增量。
+   */
+  | { readonly type: "stream.generation"; readonly baseline: ClientGenerationBaseline }
+  /**
+   * A11：新连接建立，代际比较基准失效 —— 丢弃暂存并等待本连接的第一条权威基线。
+   *
+   * 只重置"判定依据"，不预先删除已显示的临时正文：换代是否发生由新基线证明
+   * （服务端发号只保证单进程单调，跨连接不可比）。
+   */
+  | { readonly type: "stream.generation_reset" }
+  /** SSE 状态变化；reconnecting 时携带尝试次数与上限。 */
+  | {
+      readonly type: "stream.status";
+      readonly status: ClientStreamStatus;
+      readonly reconnectAttempt?: number;
+      readonly reconnectMax?: number;
+    }
+  /** 服务端告知 cursor 过期，需要 resnapshot。 */
+  | { readonly type: "stream.cursor_expired"; readonly error: ClientVisibleError }
+  /** 出现不可恢复错误。 */
+  | { readonly type: "stream.failed"; readonly error: ClientVisibleError };

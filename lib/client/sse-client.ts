@@ -1,0 +1,447 @@
+/**
+ * 员工端 SSE 客户端。
+ *
+ * 事实源：
+ * - app/api/threads/[threadId]/events/route.ts（SSE 响应格式）
+ * - docs/architecture/api-and-events.md
+ * - docs/architecture/product-surfaces-and-admin.md S10-W07
+ *
+ * 关键约束：
+ * - 浏览器原生 EventSource 不支持自定义 header，不能用 Last-Event-ID；
+ * 必须用 fetch + ReadableStream 手动实现 SSE 解析。
+ * - 每条事件：id=event_sequence（十进制），event=event_type，data=投影 JSON。
+ * - stream.resumed / stream.backpressure 是流控制事件，不进入 reducer 的投影路径。
+ * - EVENT_CURSOR_EXPIRED 是 409 + JSON body（不是 SSE 流），需要在 fetch 层捕获。
+ * - A11：`stream.generation` 是**代际控制消息**（不推进业务 cursor）；`response.delta`
+ *   只有在代际合法且四项齐全（invocation/attempt/ownership/十进制 epoch）时才构造
+ *   ClientTransientDelta。缺项/畸形一律丢弃并请求有界权威刷新，不回退"只按 turn 拼接"。
+ *
+ * 重连策略：
+ * - 网络中断 → 指数退避（500ms / 1s / 2s / 4s / 8s，最大 8s），最多 5 次后 failed。
+ * - EVENT_CURSOR_EXPIRED → 立即触发 onCursorExpired，不自动重连。
+ * - 409 其他错误 → failed。
+ * - 429（SSE 配额暂满）→ 遵循 Retry-After 重试；其他 4xx（除 409）→ failed。
+ * - 5xx → 按网络中断处理（自动重试）。
+ */
+import { apiPath } from "@/lib/api-fetch";
+import { isDecimalLeaseEpoch } from "@/lib/runtime/thread-generation";
+import { makeLocalVisibleError, toVisibleError } from "./error-messages";
+import type {
+  ClientErrorBody,
+  ClientEvent,
+  ClientGenerationBaseline,
+  ClientTransientDelta,
+  ClientTransientGeneration,
+  ClientTurnGeneration,
+  ClientVisibleError,
+} from "./types";
+
+/** SSE 客户端回调。 */
+export interface SSEClientCallbacks {
+  /** 收到事件（已通过基本解析，未做业务去重）。 */
+  onEvent(event: ClientEvent): void;
+  /** 收到不推进持久游标的模型正文增量。 */
+  onTransient(event: ClientTransientDelta): void;
+  /** A11：收到权威代际基线（`stream.generation`）。 */
+  onGeneration(baseline: ClientGenerationBaseline): void;
+  /**
+   * A11：收到畸形/缺失代际的 transient（或无法解析的基线）。
+   *
+   * 已丢弃该消息，**不得**回退旧解析。消费侧应据此做**有界**的权威刷新（重新读取正式事实），
+   * 不得据此无限重连。
+   */
+  onTransientRejected(): void;
+  /** 连接打开（fetch 拿到 200 header）。 */
+  onOpen(): void;
+  /** 进入重连流程。 */
+  onReconnecting(attempt: number): void;
+  /** 服务端告知 cursor 过期。 */
+  onCursorExpired(error: ClientVisibleError): void;
+  /** 无法恢复的失败。 */
+  onFailed(error: ClientVisibleError): void;
+}
+
+/** SSE 客户端配置。 */
+export interface SSEClientConfig {
+  /** Thread id。 */
+  threadId: string;
+  /** 初始 Last-Event-ID（断线重连时由调用方更新）。 */
+  getLastEventId(): number | null;
+  /** 自定义 fetch（测试用）。 */
+  fetchImpl?: typeof fetch;
+  /** 最大重试次数。 */
+  maxRetries?: number;
+  /** 基础退避毫秒数。 */
+  baseBackoffMs?: number;
+  /**
+   * 连接保持健康的稳定阈值（毫秒）。
+   *
+   * 只有连接在超过该时长内未中断，连续失败预算（retryCount）才被清零。
+   * 默认适合长连接的 30s；仅测试需要覆盖。修复真实问题：200 headers 一到就清零预算，
+   * 会让"连续立即结束的 200 SSE 流"每次重连都把预算清零，导致 maxRetries 永不生效。
+   */
+  healthyResetMs?: number;
+}
+
+/** SSE 客户端句柄。 */
+export interface SSEClientHandle {
+  /** 启动连接。 */
+  start(): void;
+  /** 主动关闭（不自动重连）。 */
+  close(): void;
+  /** 当前是否已关闭。 */
+  isClosed(): boolean;
+}
+
+/** SSE 断线重连次数上限（UI 展示"正在重新连接 N/M"时的 M）。 */
+export const SSE_DEFAULT_MAX_RETRIES = 5;
+const DEFAULT_BASE_BACKOFF_MS = 500;
+/** 连接保持健康的默认稳定阈值（毫秒）。适合长连接。 */
+const SSE_DEFAULT_HEALTHY_RESET_MS = 30_000;
+
+/** 解析 SSE 数据块，返回完整事件列表和剩余缓冲。 */
+function parseSSEChunk(buffer: string): {
+  events: Array<{ id: string | null; event: string; data: string }>;
+  remaining: string;
+} {
+  const events: Array<{ id: string | null; event: string; data: string }> = [];
+  // SSE 规范：事件由空行分隔
+  const parts = buffer.split("\n\n");
+  // 最后一段可能不完整，保留到下次
+  const remaining = parts.pop() ?? "";
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    let id: string | null = null;
+    let event = "message";
+    const dataLines: string[] = [];
+    for (const line of part.split("\n")) {
+      if (line.startsWith("id:")) {
+        id = line.slice(3).trim();
+      } else if (line.startsWith("event:")) {
+        event = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        dataLines.push(line.slice(5).replace(/^ /, ""));
+      }
+    }
+    if (dataLines.length > 0) {
+      events.push({ id, event, data: dataLines.join("\n") });
+    }
+  }
+  return { events, remaining };
+}
+
+/**
+ * 解析线上代际四项（A11）。
+ *
+ * 四项必须齐全且为字符串，`lease_epoch` 必须是十进制字符串（拒绝 `1e3` / `0x10` / 符号 /
+ * 空白 / 空串）。任何一项不满足返回 null —— 调用方必须**丢弃**该 delta，不得降级成旧解析。
+ */
+export function parseTransientGeneration(raw: unknown): ClientTransientGeneration | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const record = raw as Record<string, unknown>;
+  const { invocation_id: invocationId, attempt_id: attemptId, ownership_id: ownershipId } = record;
+  const leaseEpoch = record.lease_epoch;
+  if (typeof invocationId !== "string" || !invocationId) return null;
+  if (typeof attemptId !== "string" || !attemptId) return null;
+  if (typeof ownershipId !== "string" || !ownershipId) return null;
+  if (!isDecimalLeaseEpoch(leaseEpoch)) return null;
+  return {
+    invocation_id: invocationId,
+    attempt_id: attemptId,
+    ownership_id: ownershipId,
+    lease_epoch: leaseEpoch,
+  };
+}
+
+/** 解析 `stream.generation` 的 data 负载；结构不合法返回 null。 */
+export function parseGenerationBaseline(
+  data: Record<string, unknown>,
+  fallbackThreadId: string,
+): ClientGenerationBaseline | null {
+  const { baseline_sequence: baselineSequence, issued_revision: issuedRevision } = data;
+  if (typeof baselineSequence !== "number" || !Number.isFinite(baselineSequence)) return null;
+  if (typeof issuedRevision !== "number" || !Number.isFinite(issuedRevision)) return null;
+  if (!Array.isArray(data.generations)) return null;
+
+  const generations: ClientTurnGeneration[] = [];
+  for (const raw of data.generations) {
+    if (typeof raw !== "object" || raw === null) return null;
+    const entry = raw as Record<string, unknown>;
+    const turnId = entry.turn_id;
+    if (typeof turnId !== "string" || !turnId) return null;
+    // generation=null 是**明确事实**（该 Turn 无活动执行），与"字段缺失"不同：缺失即畸形。
+    if (!("generation" in entry)) return null;
+    if (entry.generation === null) {
+      generations.push({ turn_id: turnId, generation: null });
+      continue;
+    }
+    const generation = parseTransientGeneration(entry.generation);
+    if (!generation) return null;
+    generations.push({ turn_id: turnId, generation });
+  }
+
+  return {
+    thread_id: typeof data.thread_id === "string" ? data.thread_id : fallbackThreadId,
+    baseline_sequence: baselineSequence,
+    issued_revision: issuedRevision,
+    generations,
+  };
+}
+
+/** 创建 SSE 客户端。 */
+export function createSSEClient(
+  config: SSEClientConfig,
+  callbacks: SSEClientCallbacks,
+): SSEClientHandle {
+  const fetchImpl = config.fetchImpl ?? fetch;
+  const maxRetries = config.maxRetries ?? SSE_DEFAULT_MAX_RETRIES;
+  const baseBackoffMs = config.baseBackoffMs ?? DEFAULT_BASE_BACKOFF_MS;
+  const healthyResetMs = config.healthyResetMs ?? SSE_DEFAULT_HEALTHY_RESET_MS;
+
+  let closed = false;
+  let abortController: AbortController | null = null;
+  let retryCount = 0;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 连接保持健康的计时器；触发后清零连续失败预算。 */
+  let healthyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearHealthyResetTimer(): void {
+    if (healthyResetTimer !== null) {
+      clearTimeout(healthyResetTimer);
+      healthyResetTimer = null;
+    }
+  }
+
+  async function connect(): Promise<void> {
+    if (closed) return;
+
+    abortController = new AbortController();
+    const lastEventId = config.getLastEventId();
+    const headers: Record<string, string> = {
+      accept: "text/event-stream",
+    };
+    if (lastEventId !== null && lastEventId > 0) {
+      headers["last-event-id"] = String(lastEventId);
+    }
+
+    let response: Response;
+    try {
+      response = await fetchImpl(apiPath(`/api/threads/${config.threadId}/events`), {
+        method: "GET",
+        headers,
+        credentials: "include",
+        signal: abortController.signal,
+        cache: "no-store",
+      });
+    } catch (err) {
+      // AbortError：主动 close 或组件卸载，不重连
+      if (err instanceof Error && err.name === "AbortError") return;
+      scheduleRetry();
+      return;
+    }
+
+    if (closed) return;
+
+    // 错误分支
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => "");
+      let errorBody: ClientErrorBody | null = null;
+      try {
+        errorBody = JSON.parse(bodyText) as ClientErrorBody;
+      } catch {
+        // 非 JSON 响应
+      }
+
+      if (response.status === 409 && errorBody?.error?.code === "EVENT_CURSOR_EXPIRED") {
+        clearHealthyResetTimer();
+        callbacks.onCursorExpired(toVisibleError(errorBody));
+        return;
+      }
+
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(response.headers.get("retry-after"));
+        scheduleRetry(
+          Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? Math.min(retryAfterSeconds * 1000, 60_000)
+            : 0,
+        );
+        return;
+      }
+
+      if (response.status >= 500) {
+        scheduleRetry();
+        return;
+      }
+
+      // 4xx：鉴权失败 / 404 / 400 等，不重连
+      const visible = errorBody
+        ? toVisibleError(errorBody)
+        : makeLocalVisibleError({
+            code: "RESOURCE_NOT_FOUND",
+            retryable: false,
+          });
+      clearHealthyResetTimer();
+      callbacks.onFailed(visible);
+      return;
+    }
+
+    if (!response.body) {
+      clearHealthyResetTimer();
+      callbacks.onFailed(makeLocalVisibleError({ code: "STREAM_BACKPRESSURE", retryable: true }));
+      return;
+    }
+
+    // 成功打开：只让 UI 进入 open，但立即清零连续失败预算是根因。
+    // 200 headers 本身不证明连接健康——若 SSE 流很快自然结束（真实长回复场景），
+    // 每次重连都清零预算会让 maxRetries 永不生效，形成无限重连。
+    // 改为：启动健康计时器，只有连接保持健康超过 healthyResetMs 才清零预算。
+    callbacks.onOpen();
+    clearHealthyResetTimer();
+    healthyResetTimer = setTimeout(() => {
+      retryCount = 0;
+      healthyResetTimer = null;
+    }, healthyResetMs);
+
+    // 读取流
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (!closed) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const { events, remaining } = parseSSEChunk(buffer);
+        buffer = remaining;
+
+        for (const raw of events) {
+          // 流控制事件不进入业务路径
+          if (raw.event === "stream.backpressure") {
+            scheduleRetry();
+            return;
+          }
+
+          let data: Record<string, unknown>;
+          try {
+            data = JSON.parse(raw.data) as Record<string, unknown>;
+          } catch {
+            continue;
+          }
+
+          // A11：代际控制消息单独处理，不进入持久事件路径（不推进 cursor）。
+          if (raw.event === "stream.generation") {
+            const baseline = parseGenerationBaseline(data, config.threadId);
+            // 解析不了就丢弃控制消息并请求有界权威刷新；绝不退回"没有代际"的旧解析。
+            if (baseline) callbacks.onGeneration(baseline);
+            else callbacks.onTransientRejected();
+            continue;
+          }
+
+          if (raw.event === "response.delta") {
+            const payload =
+              data.payload && typeof data.payload === "object"
+                ? (data.payload as Record<string, unknown>)
+                : null;
+            const generation = parseTransientGeneration(data.generation);
+            if (
+              typeof data.transient_id === "string" &&
+              typeof data.thread_id === "string" &&
+              typeof data.turn_id === "string" &&
+              typeof payload?.delta === "string" &&
+              generation
+            ) {
+              callbacks.onTransient({
+                transient_id: data.transient_id,
+                thread_id: data.thread_id,
+                turn_id: data.turn_id,
+                generation,
+                occurred_at:
+                  typeof data.occurred_at === "string"
+                    ? data.occurred_at
+                    : new Date().toISOString(),
+                delta: payload.delta,
+              });
+            } else {
+              // A11 fail closed：缺代际 / epoch 非十进制 → 不构造可拼接 delta。
+              callbacks.onTransientRejected();
+            }
+            continue;
+          }
+
+          const eventId = typeof data.event_id === "string" ? data.event_id : raw.id;
+          const sequence =
+            typeof data.sequence === "number"
+              ? data.sequence
+              : raw.id !== null
+                ? Number.parseInt(raw.id, 10)
+                : null;
+          if (eventId === null || sequence === null || !Number.isFinite(sequence)) {
+            continue;
+          }
+
+          callbacks.onEvent({
+            event_id: eventId,
+            sequence,
+            schema_version: typeof data.schema_version === "number" ? data.schema_version : 1,
+            thread_id: typeof data.thread_id === "string" ? data.thread_id : config.threadId,
+            turn_id: typeof data.turn_id === "string" ? data.turn_id : null,
+            item_id: typeof data.item_id === "string" ? data.item_id : null,
+            occurred_at:
+              typeof data.occurred_at === "string" ? data.occurred_at : new Date().toISOString(),
+            payload: data.payload,
+            event_type: raw.event,
+          });
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+    } finally {
+      reader.releaseLock();
+    }
+
+    // 流自然结束（不应发生于 SSE；视为网络中断）
+    if (!closed) {
+      scheduleRetry();
+    }
+  }
+
+  function scheduleRetry(minDelayMs = 0): void {
+    if (closed) return;
+    // 连接结束 / 进入重试：健康计时器不再有意义，必须清理，避免泄漏。
+    clearHealthyResetTimer();
+    if (retryCount >= maxRetries) {
+      callbacks.onFailed(makeLocalVisibleError({ code: "STREAM_BACKPRESSURE", retryable: true }));
+      return;
+    }
+    retryCount += 1;
+    callbacks.onReconnecting(retryCount);
+    const backoff = Math.max(Math.min(baseBackoffMs * 2 ** (retryCount - 1), 8000), minDelayMs);
+    retryTimer = setTimeout(() => {
+      // 触发后清空句柄，避免 close 时 clearTimeout 悬空句柄。
+      retryTimer = null;
+      void connect();
+    }, backoff);
+  }
+
+  return {
+    start: () => {
+      void connect();
+    },
+    close: () => {
+      closed = true;
+      clearHealthyResetTimer();
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+    },
+    isClosed: () => closed,
+  };
+}
