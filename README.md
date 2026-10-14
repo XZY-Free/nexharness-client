@@ -29,6 +29,9 @@ pnpm dev:desktop              # 构建并启动 Electron
 pnpm package:desktop          # electron-builder 打包（mac arm64，未签名）
 ```
 
+> 桌面首次开发：pnpm 10 默认拦截依赖构建脚本，先 `pnpm approve-builds` 放行
+> electron / better-sqlite3（或在 package.json 配 `pnpm.onlyBuiltDependencies`）再跑桌面命令。
+
 ## 运行前提（联调）
 
 - nexharness API（默认 `:3210`）已启动；auth-center（`http://localhost:3101`）已启动。
