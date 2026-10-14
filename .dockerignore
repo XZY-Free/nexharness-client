@@ -1,0 +1,26 @@
+# 构建镜像时排除的内容（Dockerfile context 内不进 builder 层）
+node_modules
+dist
+release
+
+# 桌面构建产物与运行时（不进 Web 镜像）
+desktop/renderer-dist
+desktop/package-app
+desktop/bundle
+desktop/dist
+desktop/release
+desktop/storage/*.db
+desktop/storage/*.db-*
+
+# 本地与系统
+.git
+.DS_Store
+*.log
+tmp
+.vite
+*.tsbuildinfo
+
+# 密钥与本地配置
+.env
+.env.*
+!.env.example
