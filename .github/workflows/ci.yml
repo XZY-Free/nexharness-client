@@ -17,8 +17,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # electron 二进制仅桌面打包需要（本地按需下载）；CI 只做构建链验证，跳过下载加速。
       - run: pnpm install --frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build
+      # 桌面构建链验证：renderer 构建 + 主进程/预加载类型检查（完整 electron-builder 打包本地/发布时跑）。
       - run: pnpm build:desktop-renderer
+      - run: pnpm exec tsc -p desktop/tsconfig.json --noEmit
