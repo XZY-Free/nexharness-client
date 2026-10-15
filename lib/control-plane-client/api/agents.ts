@@ -35,7 +35,7 @@ export interface AgentApiClient {
   /** 获取 AgentRevision 详情。 */
   getRevision(revisionId: string): Promise<AgentRevisionDTO>;
   /**
-   * 登记 Public Agent Contract（07 §4：POST /admin/api/agent-registrations）。
+   * 登记 Public Agent Contract（POST /admin/api/agent-registrations）。
    * 只发送 protocol + contract；禁止 URL/Git/源码路径/endpoint/凭证字段。
    */
   registerContract(

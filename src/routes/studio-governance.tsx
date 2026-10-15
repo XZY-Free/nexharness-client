@@ -27,10 +27,10 @@ interface GovernanceWire {
 }
 
 /**
- * Studio Governance 配置页（关口02 02-6 · 冻结方案 §29 / §54-P2 · 页面数据 API 化）。
+ * Studio Governance 配置页（页面数据 API 化）。
  *
  * - policy.read 即可查看当前生效 Governance 配置（接口 fail-closed，绝不回退默认值；403 → 门禁页）。
- * - governance.config.publish 时渲染可编辑表单（快照轻量断言）；保存走 PUT + If-Match/ETag（§33）。
+ * - governance.config.publish 时渲染可编辑表单（快照轻量断言）；保存走 PUT + If-Match/ETag。
  * - server component 直读已移除：数据来自 GET /studio/api/governance。
  */
 export default function GovernancePage() {

@@ -1,5 +1,5 @@
 /**
- * 正则安全助手（关口02 02-6 · 冻结方案 §6.5 / §54-P3）。
+ * 正则安全助手。
  *
  * argMatcher 中的 pathRegex / commandRegex 会被 Evaluator 用作 `new RegExp().test()`，
  * 恶意/事故正则可造成 ReDoS 或编译失败。Policy Revision 在发布前必须 fail-closed：

@@ -1,17 +1,13 @@
 /**
  * 稳定错误码投影。
  *
- * 事实源是 `docs/contracts/error-codes.json`（normative）。
- * 本模块是运行时投影，避免把 docs 目录耦合进运行时 bundle（tsconfig 已 exclude docs）。
- * `error-codes.test.ts` 校验本投影与契约 JSON 完全一致；契约变更时测试失败，强制同步。
- *
  * 契约变更规则：
  * - 移除错误码 = major，必须提升 contract_version。
  * - 改变 retryable 语义 = major。
  * - HTTP 映射集以契约为准（400/401/403/404/409/412/413/422/429/503）。
  */
 export interface ApiErrorDefinition {
-  /** HTTP 状态码，与 error-codes.json 的 http 字段一致。 */
+  /** HTTP 状态码。 */
   readonly http: number;
   /** 是否允许客户端按 retry_after/退避重试。 */
   readonly retryable: boolean;
@@ -76,9 +72,9 @@ export const API_ERROR_CODES = {
   MEMORY_SOURCE_NOT_ALLOWED: { http: 403, retryable: false },
   OPERATION_PAYLOAD_CONFLICT: { http: 409, retryable: false },
   PARENT_INVOCATION_NOT_ACTIVE: { http: 409, retryable: false },
-  /** : Job 未预授权，调度前必须准备 Grant/授权/更明确 Policy（§18.4）。 */
+  /** : Job 未预授权，调度前必须准备 Grant/授权/更明确 Policy。 */
   POLICY_REQUIRES_PREAUTH: { http: 403, retryable: false },
-  /** : ExecutionBinding 冻结的 Policy digest 与实际 frozen Revision 不一致（§16.3 fail-closed）。 */
+  /** : ExecutionBinding 冻结的 Policy digest 与实际 frozen Revision 不一致（fail-closed）。 */
   POLICY_INTEGRITY_MISMATCH: { http: 409, retryable: false },
   POLICY_BLOCKED: { http: 403, retryable: false },
   /** : 品牌写入未通过合同校验（名称长度/资源路径/格式非法）。 */

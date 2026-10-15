@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-1：本机文件流式上传到 Server workspace。
+ * 本机文件流式上传到 Server workspace。
  *
  * 当 BrowserController 捕获到 Electron `will-download` 事件并完成本机下载后，
  * 调用本模块将本机文件流式上传到 Server 的 Thread workspace `downloads/` 目录。

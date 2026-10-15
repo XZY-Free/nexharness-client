@@ -1,12 +1,5 @@
 /**
- * 用户操作请求 schema：UserActionRequest（阶段 8 S08-C04）。
- *
- * 事实源：
- * - docs/architecture/persistence.md （user_action_request 与 grant）、。
- * - docs/architecture/domain-model.md （PermissionDecision 与 UserActionRequest 关系）。
- * - docs/architecture/api-and-events.md （resolve 接口约束）、
- * （auth callback）、§10（block 不可被绕过）。
- * - docs/architecture/capabilities-and-security.md 。
+ * 用户操作请求 schema：UserActionRequest。
  *
  * 关键不变量：
  * - 四种 request_type 共用一张表：confirmation / auth / grant / input。
@@ -15,7 +8,7 @@
  * - auth 类型成功只能来自可信 callback，:resolve 接口仅接受 cancel。
  * - state/nonce 一次性消费，hash 后存储（不存原值）。
  * - expires_at 超时后进入 expired 终态，不可再 resolve。
- * - block 决策不创建本表记录（§10 验收：无可解析 approve 请求）。
+ * - block 决策不创建本表记录（验收：无可解析 approve 请求）。
  * - resolve 与 resume command 同事务写入（在仓储层 createUserActionRequest 时关联）。
  */
 import { randomUUID } from "node:crypto";
@@ -35,7 +28,7 @@ import {
 // ─── RequestType ─────────────────────────────────────────
 
 /**
- * UserActionRequest 类型（）。
+ * UserActionRequest 类型。
  * - confirmation：副作用确认（approve/deny）。
  * - auth：外部系统登录（OAuth/OIDC，只能由可信 callback 完成）。
  * - grant：用户授权（approve/deny，成功后写 Grant）。
@@ -65,7 +58,7 @@ export const USER_ACTION_REQUEST_TERMINAL_STATES: readonly UserActionRequestStat
 // ─── Resolution ──────────────────────────────────────────
 
 /**
- * 解析结果（）。
+ * 解析结果。
  * - approve：confirmation/grant 用户同意。
  * - deny：confirmation/grant 用户拒绝。
  * - submit：input 用户提交（按 input_schema 校验后的 response）。
@@ -77,7 +70,7 @@ export const USER_ACTION_RESOLUTIONS = ["approve", "deny", "submit", "cancel"] a
 export type UserActionResolution = (typeof USER_ACTION_RESOLUTIONS)[number];
 
 /**
- * 各 request_type 允许的 resolution 集合（）。
+ * 各 request_type 允许的 resolution 集合。
  * - auth 在 :resolve 接口仅接受 cancel；approve 只能由可信 callback 写入。
  */
 export const ALLOWED_RESOLUTIONS_BY_TYPE: Record<
@@ -93,7 +86,7 @@ export const ALLOWED_RESOLUTIONS_BY_TYPE: Record<
 // ─── UserActionRequest 表 ────────────────────────────────
 
 /**
- * UserActionRequest 表：四种用户操作请求的统一持久化事实源（）。
+ * UserActionRequest 表：四种用户操作请求的统一持久化事实源。
  *
  * 关键约束：
  * - tenantId 冗余字段（与 thread_id 一致性由应用层校验）。
@@ -155,7 +148,7 @@ export const userActionRequestTable = mysqlTable(
     /** 脱敏后的用户响应（如 input 类型的 submit 内容）；不含敏感原值。 */
     responseRedactedJson: json("responseRedactedJson"),
     /** 引发 pause 的 PermissionDecision id（逻辑外键 → PermissionDecision.id）。
-     * 仅 purpose=tool_permission_confirmation 时 NOT NULL，精确关联该 pause Decision（§19）。 */
+     * 仅 purpose=tool_permission_confirmation 时 NOT NULL，精确关联该 pause Decision。 */
     permissionDecisionId: varchar("permissionDecisionId", { length: 36 }),
     /** grant 类型 approve 后指向 Grant.id（逻辑外键）。 */
     grantId: varchar("grantId", { length: 36 }),

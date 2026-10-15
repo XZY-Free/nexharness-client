@@ -5,15 +5,12 @@ import {
 } from "@/components/studio/studio-settings-section";
 
 /**
- * 统一管理后台 — 能力与知识页（S11-W01 占位）。
+ * 统一管理后台 — 能力与知识页（占位）。
  *
  * 一级导航「能力与知识」整合原 /studio/resources + /studio/skills + /studio/artifacts。
- * 本页为 S11-W01 重组后的着陆页，提供到现有子页面的入口；
- * S11-W03 将在此页直接渲染 Skill / Tool / Knowledge / Connection 一体化管理。
+ * 本页为重组后的着陆页，提供到现有子页面的入口。
  *
- * 事实源：
- * - docs/architecture/runtime-control-plane.md
- *   「能力与知识」：Skill、Tool、Knowledge、模型、连接、来源和风险变化
+ * 覆盖：Skill、Tool、Knowledge、模型、连接、来源和风险变化。
  *
  * 门禁（studio.access）由 StudioShell 统一承担（页面数据 API 化）。
  */

@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-3：Artifact 上传器。
+ * Artifact 上传器。
  *
  * 将 Desktop 端的临时文件（截图、DOM dump、network body）流式上传到
  * Server workspace `artifacts/` 目录。

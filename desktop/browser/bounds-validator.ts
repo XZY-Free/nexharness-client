@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：WebContentsView bounds 校验器。
+ * WebContentsView bounds 校验器。
  *
  * Main process 收到 renderer 传来的 bounds 后，必须校验：
  * - 数值是有限数（NaN/Infinity 拒绝）

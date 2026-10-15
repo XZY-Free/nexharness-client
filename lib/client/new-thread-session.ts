@@ -41,7 +41,7 @@ function createIdempotencyKey(): string {
 }
 
 /**
- * 解析失败响应并抛出可见错误（09 §11：区分 no eligible route / required context 等）。
+ * 解析失败响应并抛出可见错误（区分 no eligible route / required context 等）。
  * 服务端错误 Envelope 为 { error: { code, message } }；无可用 body 时退回默认提示。
  */
 async function requireJson<T>(response: Response, message: string): Promise<T> {

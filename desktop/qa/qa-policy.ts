@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-4：QA WebContents read-only 策略。
+ * QA WebContents read-only 策略。
  *
  * 纯逻辑模块，定义隐藏 QA WebContents 的安全策略决策。
  *

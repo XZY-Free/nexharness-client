@@ -8,7 +8,7 @@
  * - 命令白名单严格匹配，未知命令一律拒绝
  * - payload 必须通过 schema 校验，防止注入非法参数
  * - 操作类命令需要 approval（见 approval.ts）
- * - 命令名使用 V10 dotted 格式（browser.getTabs），与 AI 工具名（browserGetTabs）映射
+ * - 命令名使用 dotted 格式（browser.getTabs），与 AI 工具名（browserGetTabs）映射
  */
 import { z } from "zod";
 
@@ -59,10 +59,10 @@ export const ALLOWED_COMMANDS = [...READ_COMMANDS, ...ACTION_COMMANDS] as const;
 export type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
 
 /**
- * V9 工具名 → V10 RPC 命令名映射。
+ * AI 工具名 → RPC 命令名映射。
  *
- * AI 面向的工具名保持 V9 camelCase（browserGetTabs），
- * RPC 线路使用 V10 dotted 格式（browser.getTabs）。
+ * AI 面向的工具名保持 camelCase（browserGetTabs），
+ * RPC 线路使用 dotted 格式（browser.getTabs）。
  */
 export const TOOL_TO_COMMAND: Record<string, AllowedCommand> = {
   shellExecute: "workspace.execute",
@@ -83,7 +83,7 @@ export const TOOL_TO_COMMAND: Record<string, AllowedCommand> = {
 };
 
 /**
- * V10 RPC 命令名 → V9 工具名反向映射。
+ * RPC 命令名 → AI 工具名反向映射。
  */
 export const COMMAND_TO_TOOL: Record<AllowedCommand, string> = Object.fromEntries(
   Object.entries(TOOL_TO_COMMAND).map(([tool, cmd]) => [cmd, tool]),
@@ -235,7 +235,7 @@ export function isActionCommand(command: string): command is ActionCommand {
 }
 
 /**
- * 将 V9 工具名映射为 V10 RPC 命令名。
+ * 将 AI 工具名映射为 RPC 命令名。
  */
 export function toolToCommand(toolName: string): AllowedCommand | null {
   return TOOL_TO_COMMAND[toolName] ?? null;

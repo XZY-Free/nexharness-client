@@ -3,7 +3,7 @@ import { WebThreadShell } from "@/components/thread/web-thread-shell";
 import { useParams } from "react-router-dom";
 import { NotFoundView } from "./not-found";
 
-// 专题01 §33.7：/chat/{threadId} 只接受真实会话 UUID；新建空态统一走 /chat。
+// /chat/{threadId} 只接受真实会话 UUID；新建空态统一走 /chat。
 // 登录门禁：AuthGate（客户端校验 /api/user/current，未登录跳 /login）。
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

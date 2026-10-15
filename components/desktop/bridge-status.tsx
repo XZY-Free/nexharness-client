@@ -4,7 +4,7 @@ import { getDesktopCapabilities } from "@/lib/desktop/capabilities";
 import { useEffect, useState } from "react";
 
 /**
- * V10 Phase 5：Desktop Agent Bridge 连接状态指示器。
+ * Desktop Agent Bridge 连接状态指示器。
  *
  * 显示 Desktop 与 Server 之间的 Agent Bridge 连接状态：
  * - disconnected: 灰色圆点，"未连接"

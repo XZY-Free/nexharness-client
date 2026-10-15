@@ -1,18 +1,10 @@
 /**
- * 受控工具执行链 schema：PermissionDecision + Grant（阶段 8 S08-C03）。
- *
- * 事实源：
- * - docs/architecture/persistence.md （permission_decision、
- * user_action_request 与 grant）、（ToolCall、Effect 与 Credential）。
- * - docs/architecture/domain-model.md （PermissionDecision
- * allow/pause/block）、§9（Credential Gateway）。
- * - docs/architecture/api-and-events.md §10（block 不可被绕过）。
- * - docs/architecture/capabilities-and-security.md 。
+ * 受控工具执行链 schema：PermissionDecision + Grant。
  *
  * 关键不变量：
  * - PermissionDecision：UNIQUE(toolCallId, decisionSequence)，每次评估生成新行
  * （允许同一 ToolCall 多次评估，例如 allow 后被覆盖）。
- * - decision=block 不创建可绕过的 UserActionRequest（§10）。
+ * - decision=block 不创建可绕过的 UserActionRequest。
  * - Agent 只能收紧不能放宽平台策略（应用层校验，不在 DB 强制）。
  * - Grant：scope 必须覆盖当前 ToolCall；撤销后不可注入（revokedAt 回填后视为失效）。
  * - credentialRefId 引用 CredentialRef；Grant 不保存 Credential 原值。
@@ -39,11 +31,11 @@ import {
 // ─── PermissionDecision ──────────────────────────────────
 
 /**
- * PermissionDecision 决策结果（）。
+ * PermissionDecision 决策结果。
  * - allow：允许执行，无需用户操作。
  * - pause：暂停，等待用户操作（confirmation/auth/grant/input）。
  * 恢复语义由 UserActionRequest 表达，本表只记录决策事实。
- * - block：阻止执行；不创建可绕过的 UserActionRequest（§10）。
+ * - block：阻止执行；不创建可绕过的 UserActionRequest。
  * Agent 只能收紧不能放宽平台策略。
  *
  * 命名区分：与旧 lib/db/schema.ts PERMISSION_DECISIONS 不同值集。
@@ -131,7 +123,7 @@ export const GRANT_STATES = ["active", "revoked", "expired"] as const;
 export type GrantState = (typeof GRANT_STATES)[number];
 
 /**
- * Grant 表：用户授权记录（）。
+ * Grant 表：用户授权记录。
  *
  * 关键约束：
  * - scope 必须覆盖当前 ToolCall 所需 scope（应用层校验）。
@@ -223,7 +215,7 @@ export const POLICY_REVISION_STATES = ["draft", "published", "withdrawn"] as con
 export type PolicyRevisionState = (typeof POLICY_REVISION_STATES)[number];
 
 /**
- * PolicySet 表：稳定策略身份（）。
+ * PolicySet 表：稳定策略身份。
  *
  * 关键约束：
  * - UNIQUE(tenantId, policySetKey)：租户内稳定 key 唯一。
@@ -271,7 +263,7 @@ export type PolicySet = InferSelectModel<typeof policySetTable>;
 export type NewPolicySet = InferInsertModel<typeof policySetTable>;
 
 /**
- * PolicyRevision 表：不可变策略修订（）。
+ * PolicyRevision 表：不可变策略修订。
  *
  * 关键约束：
  * - UNIQUE(policySetId, revisionNo)：PolicySet 内修订号单调递增。

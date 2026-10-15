@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 运行日志面板（V10 Phase 1，AppRuntime 精简版）。
+ * 运行日志面板（AppRuntime 精简版）。
  *
  * 日志源：AppRuntime dev server 日志——从 /api/threads/{thread_id}/runtime/logs 轮询，
  * 展示运行时 stdout/stderr 尾部。旧 ThreadRun /api/threads/[id]/messages 事件流

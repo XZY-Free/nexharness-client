@@ -1,16 +1,14 @@
 import { evaluateSnapshot } from "@/lib/identity-client/evaluate";
 import type { PermissionSnapshot } from "@/lib/identity-client/snapshot";
 /**
- * 统一管理后台导航可见性解析（S11-W01）。
+ * 统一管理后台导航可见性解析。
  *
- * 事实源：
- * - docs/architecture/runtime-control-plane.md
- * S11-W01：「菜单可见性与服务端 Action Scope 同源；隐藏菜单不能代替授权校验」
+ * 「菜单可见性与服务端 Action Scope 同源；隐藏菜单不能代替授权校验」
  * 「后台信息架构」8 个一级导航：智能体 / 能力与知识 / 会话与协作 / Runtime 与环境 /
  * 观测与评测 / 安全与审计 / 运营 / 平台设置
  *
  * 消费方模型 v4：可见性由**权限快照**（auth-center 预展开清单）本地投影——
- * `navVisibilityFromSnapshot` 为纯函数（/studio/api/context 接口消费）。
+ * `navVisibilityFromSnapshot` 为纯函数（studio/api/context 接口消费）。
  *
  * 安全边界：
  * - 菜单可见性只是 UX 层，不能代替服务端 Action Scope 校验（每个写 API 仍走 requireActionScope）。

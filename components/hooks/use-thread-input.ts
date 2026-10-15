@@ -1,9 +1,7 @@
 /**
- * 员工端发消息 Hook（S10-W03）。
+ * 员工端发消息 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W03：「空闲时发送创建正式 UserMessage/Turn；运行中默认创建 PendingInput」
+ * 「空闲时发送创建正式 UserMessage/Turn；运行中默认创建 PendingInput」
  *
  * 职责：
  * - 根据 latestTurn.turn_state 决定走 POST /turns（空闲）还是 POST /pending-inputs（运行中）。

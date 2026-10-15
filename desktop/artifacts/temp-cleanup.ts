@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-6：临时文件清理工具。
+ * 临时文件清理工具。
  *
  * 提供 safeUnlink、cleanupTempFiles、cleanupThreadTempFiles、cleanupAllTempFiles 四个函数：
  * - safeUnlink：单文件删除，ENOENT 幂等，其他错误静默返回 false（清理失败不阻断主流程）

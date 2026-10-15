@@ -1,10 +1,7 @@
 /**
- * 员工端通用 UserAction Hook（S10-W05）。
+ * 员工端通用 UserAction Hook。
  *
- * 事实源：
- * - docs/architecture/api-and-events.md §3.18（解析 UserActionRequest）
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W05：「UserAction 查询、确认、拒绝、授权完成与超时」
+ * 「UserAction 查询、确认、拒绝、授权完成与超时」
  *
  * 职责：
  * - resolveUserAction：员工解析通用 UserAction 请求

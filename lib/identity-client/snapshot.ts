@@ -1,7 +1,6 @@
 /**
  * 权限快照类型（客户端并集）。
  *
- * 搬迁自 nexharness `lib/identity-client/snapshot.ts` 的**类型定义部分**：
  * 客户端只消费快照数据结构与纯函数评测（evaluate.ts），不包含拉取 / 缓存 /
  * 凭证注册等消费链逻辑（那些留在 nexharness 服务端）。
  */

@@ -1,10 +1,10 @@
 /**
  * Artifact Item（artifact）。
  *
- * W05 增强范围：
+ * 增强范围：
  * - 展示来源 Turn / Invocation / ToolCall、内容类型、保存位置、内容 hash 和可执行操作。
  * - Desktop 本地 Artifact 仅在持有文件的设备上可"打开"；Web 显示等待设备或可用的云端副本，
- *   不伪造本地访问（W05 计划行 76-77）。
+ *   不伪造本地访问。
  *
  * content 结构（与服务端 projectItem 投影对齐，兼容旧字段）：
  * ```
@@ -17,11 +17,11 @@
  *   content_hash?: string, hash?: string,                   // sha256:<hex>
  *   content_ref?: string, location?: string,                // 受管引用（s3:// oci:// file://internal/...）
  *   visibility_scope?: "thread"|"workspace"|"owner"|"organization",
- *   // 来源（W05）
+ *   // 来源
  *   source_turn_id?: string,
  *   source_invocation_id?: string,
  *   source_tool_call_id?: string,
- *   // 可用性（W05）
+ *   // 可用性
  *   availability?: "local" | "cloud" | "pending_device" | "unavailable",
  *   device_id?: string,                                     // 本地文件持有设备
  *   device_status?: "online" | "offline" | "unknown",

@@ -1,14 +1,12 @@
 /**
  * Thread 页面。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   「Thread 顶部固定展示主 Agent、可选 Goal、当前任务状态和默认执行位置」
- *   「时间线覆盖用户与 Agent Item、公开进度、ToolCall、Artifact、UserAction、Child Thread 与 Job 结果投影」
- *   「空闲时发送创建正式 UserMessage/Turn；运行中默认创建 PendingInput」
- *   「PendingInput 队列展示在时间线上方，Steer/Stop 控制条在 Header 与 Timeline 之间」
- *   「员工在发送消息前选择 Agent / Model / Skill / Environment」
- *   「Desktop 复用共同时间线，在右侧增加文件、页面和内部系统任务操作面板」
+ * 「Thread 顶部固定展示主 Agent、可选 Goal、当前任务状态和默认执行位置」
+ * 「时间线覆盖用户与 Agent Item、公开进度、ToolCall、Artifact、UserAction、Child Thread 与 Job 结果投影」
+ * 「空闲时发送创建正式 UserMessage/Turn；运行中默认创建 PendingInput」
+ * 「PendingInput 队列展示在时间线上方，Steer/Stop 控制条在 Header 与 Timeline 之间」
+ * 「员工在发送消息前选择 Agent / Model / Skill / Environment」
+ * 「Desktop 复用共同时间线，在右侧增加文件、页面和内部系统任务操作面板」
  *
  * 职责：
  * - 组合 ThreadHeader（顶部固定）+ ThreadTimeline（时间线）+ ThreadInput（输入框，内嵌运行控制与待办队列）。
@@ -16,9 +14,9 @@
  * - SSE 事件到达时刷新 Thread 详情（turn.accepted / turn.state_changed / thread.updated）。
  * - 会话同步错误只提示连接状态，保留已加载的时间线与输入区；Turn 执行失败由时间线内的 Harness 答复承接。
  * - 输入区集成助手单次调用选择、模型选择；不绑定主 Agent，不做 handoff。
- * - Agent 与 Runtime Authority §35：不再绑定主 Agent（primary_agent_id 已移除），无 Agent 时输入区照常可用。
- * - W4-1：顶部 Steer/Stop 横条与时间线上方的待办队列移入 ThreadInput 内部，
- *   停止按钮复用 codex 形态（输入框右下圆钮变 ■），待办队列复用紧凑单行条。
+ * - 不再绑定主 Agent（primary_agent_id 已移除），无 Agent 时输入区照常可用。
+ * - 顶部 Steer/Stop 横条与时间线上方的待办队列移入 ThreadInput 内部，
+ *   停止按钮复用输入框右下圆钮形态（圆钮变 ■），待办队列复用紧凑单行条。
  * - Desktop：右侧渲染任务工作台，提供文件、审阅、浏览器和会话上下文入口。
  *
  * 使用：
@@ -159,7 +157,7 @@ export function ThreadPage({
   // - 侧栏收起后从 160px 开始拖拽，为搜索与展开按钮保留真实鼠标命中区。
   // - 无条件渲染：thread 未加载时标题显示"新会话"占位、状态点隐藏。
   const taskStatus = deriveTaskStatus(latestTurn);
-  // Agent 与 Runtime Authority §15：Thread 不再绑定主 Agent（primary_agent_id 已移除，§35）。
+  // Thread 不再绑定主 Agent（primary_agent_id 已移除）。
   // 移除 default-agent fallback 展示（"助手"兜底）；Agent 目录为空时不再伪装主 Agent。
   const desktopTitlebar = variant === "desktop" && (
     <div
@@ -200,7 +198,7 @@ export function ThreadPage({
     </div>
   );
 
-  // 加载状态（W4-1）。
+  // 加载状态。
   // 仅「首次加载」（无任何已渲染内容）进入稳定骨架：与正常页面同高的顶部标题区、
   // 消息区局部加载反馈、底部 ThreadInput（"助手"与平台默认模型仍可见）。
   // 骨架只复用 ThreadInput 与现有设计 tokens，不复制第二套业务状态机、

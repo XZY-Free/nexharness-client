@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：Browser Controller。
+ * Browser Controller。
  *
  * 管理 WebContentsView 的完整生命周期：
  * - 创建/销毁 WebContentsView
@@ -696,7 +696,7 @@ export class BrowserController {
    * - text: body.innerText（可见文本，截断到 maxTextLength）
    * - domSummary: 结构化 JSON（title、forms、links、meta 信息）
    *
-   * 不返回原始 HTML（架构 §7："DOM 和 accessibility 返回结构化摘要，不向模型默认发送整页 HTML"）
+   * 不返回原始 HTML（"DOM 和 accessibility 返回结构化摘要，不向模型默认发送整页 HTML"）
    * @param maxTextLength - 文本截断长度（可选，默认不截断由 redaction 处理）
    */
   async getSnapshot(

@@ -1,7 +1,5 @@
 /**
- * A11：执行代际（Generation）契约与权威基线。
- *
- * 事实源：repairs/A11-stream-generation.md、contracts/shared-contracts.md §7、复审报告 §9。
+ * 执行代际（Generation）契约与权威基线。
  *
  * ## 定义
  *
@@ -29,7 +27,7 @@
  *
  * ## 为什么本模块零依赖
  *
- * 这份定义被**服务端与浏览器共用**（shared-contracts §7：服务端发送、ClientTransientDelta、
+ * 这份定义被**服务端与浏览器共用**（服务端发送、ClientTransientDelta、
  * SSE 解析、store/reducer、快照合并、Web/Desktop 共用客户端全部使用同一份定义）。因此本模块
  * 只包含纯类型与纯函数，不得 import 任何服务端模块（db/drizzle/node:crypto/事件总线）——
  * 否则浏览器 bundle 会被拉进服务端适配层。服务端专属的读取与发号见

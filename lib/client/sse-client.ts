@@ -1,18 +1,13 @@
 /**
  * 员工端 SSE 客户端。
  *
- * 事实源：
- * - app/api/threads/[threadId]/events/route.ts（SSE 响应格式）
- * - docs/architecture/api-and-events.md
- * - docs/architecture/product-surfaces-and-admin.md S10-W07
- *
  * 关键约束：
  * - 浏览器原生 EventSource 不支持自定义 header，不能用 Last-Event-ID；
  * 必须用 fetch + ReadableStream 手动实现 SSE 解析。
  * - 每条事件：id=event_sequence（十进制），event=event_type，data=投影 JSON。
  * - stream.resumed / stream.backpressure 是流控制事件，不进入 reducer 的投影路径。
  * - EVENT_CURSOR_EXPIRED 是 409 + JSON body（不是 SSE 流），需要在 fetch 层捕获。
- * - A11：`stream.generation` 是**代际控制消息**（不推进业务 cursor）；`response.delta`
+ * - `stream.generation` 是**代际控制消息**（不推进业务 cursor）；`response.delta`
  *   只有在代际合法且四项齐全（invocation/attempt/ownership/十进制 epoch）时才构造
  *   ClientTransientDelta。缺项/畸形一律丢弃并请求有界权威刷新，不回退"只按 turn 拼接"。
  *
@@ -42,10 +37,10 @@ export interface SSEClientCallbacks {
   onEvent(event: ClientEvent): void;
   /** 收到不推进持久游标的模型正文增量。 */
   onTransient(event: ClientTransientDelta): void;
-  /** A11：收到权威代际基线（`stream.generation`）。 */
+  /** 收到权威代际基线（`stream.generation`）。 */
   onGeneration(baseline: ClientGenerationBaseline): void;
   /**
-   * A11：收到畸形/缺失代际的 transient（或无法解析的基线）。
+   * 收到畸形/缺失代际的 transient（或无法解析的基线）。
    *
    * 已丢弃该消息，**不得**回退旧解析。消费侧应据此做**有界**的权威刷新（重新读取正式事实），
    * 不得据此无限重连。
@@ -132,7 +127,7 @@ function parseSSEChunk(buffer: string): {
 }
 
 /**
- * 解析线上代际四项（A11）。
+ * 解析线上代际四项。
  *
  * 四项必须齐全且为字符串，`lease_epoch` 必须是十进制字符串（拒绝 `1e3` / `0x10` / 符号 /
  * 空白 / 空串）。任何一项不满足返回 null —— 调用方必须**丢弃**该 delta，不得降级成旧解析。
@@ -331,7 +326,7 @@ export function createSSEClient(
             continue;
           }
 
-          // A11：代际控制消息单独处理，不进入持久事件路径（不推进 cursor）。
+          // 代际控制消息单独处理，不进入持久事件路径（不推进 cursor）。
           if (raw.event === "stream.generation") {
             const baseline = parseGenerationBaseline(data, config.threadId);
             // 解析不了就丢弃控制消息并请求有界权威刷新；绝不退回"没有代际"的旧解析。
@@ -365,7 +360,7 @@ export function createSSEClient(
                 delta: payload.delta,
               });
             } else {
-              // A11 fail closed：缺代际 / epoch 非十进制 → 不构造可拼接 delta。
+              // fail closed：缺代际 / epoch 非十进制 → 不构造可拼接 delta。
               callbacks.onTransientRejected();
             }
             continue;

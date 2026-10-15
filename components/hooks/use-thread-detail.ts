@@ -1,9 +1,7 @@
 /**
  * 员工端 Thread 详情 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W02：「Thread 顶部固定展示主 Agent、可选 Goal、当前任务状态和默认执行位置」
+ * 「Thread 顶部固定展示主 Agent、可选 Goal、当前任务状态和默认执行位置」
  *
  * 职责：
  * - 加载 Thread 详情（含 active Goal + 最新 Turn）。
@@ -62,7 +60,7 @@ export function useThreadDetail(threadId: string): UseThreadDetailResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ClientVisibleError | null>(null);
 
-  // W4-1：区分「初始加载」与「后台刷新」。SSE 事件触发的 refresh 不动 loading 状态，
+  // 区分「初始加载」与「后台刷新」。SSE 事件触发的 refresh 不动 loading 状态，
   // 否则每个 turn.accepted / turn.state_changed 都会把已渲染的会话替换成全屏 spinner，
   // 视觉上像「每次请求/回复结束都刷新页面」。仅初始加载与显式重试才显示 loading。
   const load = useCallback(

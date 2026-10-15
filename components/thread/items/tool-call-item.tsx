@@ -1,9 +1,9 @@
 /**
- * Tool 调用 Item（tool_call）——W3-3 轻量行内条目形态（方案 §4.2）。
+ * Tool 调用 Item（tool_call）——轻量行内条目形态。
  *
  * content 结构：{ tool_name, tool_display_name?, status, input?, output?, error? }
  *
- * 形态（视觉基准：03 原型 .tool-line/.tool-out）：
+ * 形态（对齐原型 .tool-line/.tool-out）：
  * - 行内条目：17px 小方图标容器 + 名称 + 状态 + chevron，无边框卡片。
  * - 运行中图标容器内 spinner；完成 ✓（success）；失败 !（destructive）。
  * - 点击展开浅灰输出块（bg-muted 圆角 pre：输入 / 输出 / 错误）。

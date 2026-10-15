@@ -47,14 +47,14 @@ export interface RuntimeRevisionDTO {
   revision_state: RuntimeRevisionState;
   protocol_type: string;
   protocol_contract_revision: string;
-  /** 证据种类（hosted_artifact | external_endpoint，03 §2）。 */
+  /** 证据种类（hosted_artifact | external_endpoint）。 */
   runtime_evidence_kind: "hosted_artifact" | "external_endpoint";
-  /** 被测对象统一 digest（03 §6）。 */
+  /** 被测对象统一 digest。 */
   runtime_target_digest: string;
   endpoint_ref: string;
   artifact_id: string | null;
   artifact_digest: string | null;
-  /** 仅 hosted_artifact 非空；external_endpoint 为 null（03 §4，不伪造 Artifact）。 */
+  /** 仅 hosted_artifact 非空；external_endpoint 为 null（不伪造 Artifact）。 */
   artifact_ref: string | null;
   config_hash: string;
   runtime_capabilities: unknown;
@@ -68,7 +68,7 @@ export interface RuntimeRevisionDTO {
   publication_record_id: string | null;
   /** Withdrawal Record。 */
   withdrawal_record_id: string | null;
-  /** Candidate Conformance — 当前可发布的最新 passed 且 exact-bound Run（02 §2/§4）。 */
+  /** Candidate Conformance — 当前可发布的最新 passed 且 exact-bound Run。 */
   latest_valid_conformance_run_id: string | null;
   latest_valid_conformance_overall_result: RuntimeConformanceOverallResult | null;
   /** Publication-bound Conformance — 发布时 PublicationRecord 冻结的 Run（执行资格 Authority）。 */
@@ -124,7 +124,7 @@ export interface RuntimeConformanceRunDTO {
 /** 发布 RuntimeRevision 请求 — 必须显式传入精确证据。 */
 export interface PublishRuntimeRevisionRequest {
   expected_version_no: number;
-  /** hosted_artifact 必填；external_endpoint 不得携带（03 §4，不伪造 Artifact）。 */
+  /** hosted_artifact 必填；external_endpoint 不得携带（不伪造 Artifact）。 */
   attestation_id: string | null;
   conformance_run_id: string;
 }

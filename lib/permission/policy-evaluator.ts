@@ -1,11 +1,11 @@
 import type { PermissionDecisionValue } from "@/lib/persistence/schema/permission";
 /**
- * Formal Policy Evaluator（关口02 02-6 · 冻结方案 §15 / §16 / §18 / §P6）。
+ * Formal Policy Evaluator。
  *
  * 纯函数：只接受平台已解析事实，不接受模型直传的 tenantId/userId/policyRevisionId/
- * credentialRef/permissionDecision 作为 Authority（§15.1）。
+ * credentialRef/permissionDecision 作为 Authority。
  *
- * 策略层级（§15.2）：
+ * 策略层级：
  *   平台不可关闭的强制规则  >  Tenant/Route PolicyRevision  >  AgentRevision 更严格 requirements
  *   >  当前操作已有的窄范围授权事实（Grant）。
  *
@@ -14,8 +14,8 @@ import type { PermissionDecisionValue } from "@/lib/persistence/schema/permissio
  *   - Grant 只满足"允许被授权的缺口"（可把 pause → allow），绝不把 block 降级。
  *   - 任何东西都不能把 block 降级。
  *
- * 正式决策值仅 allow / pause / block（§P3，无 legacy ask/deny）。
- * 无规则命中时使用冻结 Revision 的 defaultDecision（P1 默认 pause，§P1）。
+ * 正式决策值仅 allow / pause / block（无 legacy ask/deny）。
+ * 无规则命中时使用冻结 Revision 的 defaultDecision（默认 pause）。
  *
  * 本文件自带匹配逻辑（toolPattern / argMatcher / scope），不复用已删除的 legacy
  * lib/permission/engine.ts（02-6 P9 物理删除）。正则 ReDoS 防护复用 lib/security/regex-safety。
@@ -23,7 +23,7 @@ import type { PermissionDecisionValue } from "@/lib/persistence/schema/permissio
 import { isReDoSRisky } from "@/lib/security/regex-safety";
 
 // ─── 决策强度 ─────────────────────────────────────────────
-/** 决策强度排序：block > pause > allow（§6.2 / schema Policy.priority 注释）。 */
+/** 决策强度排序：block > pause > allow（schema Policy.priority 注释）。 */
 export const DECISION_RANK: Record<PermissionDecisionValue, number> = {
   block: 2,
   pause: 1,
@@ -51,7 +51,7 @@ export interface PolicyRuleView {
 
 /** AgentRevision.permissionRequirementsJson 中本批解释的子集：工具风险硬上限。 */
 export interface AgentPermissionRequirements {
-  /** 允许的工具风险类上限；超过 → Agent 收紧为 pause（§15.2 Agent 只能收紧）。 */
+  /** 允许的工具风险类上限；超过 → Agent 收紧为 pause（Agent 只能收紧）。 */
   toolRiskMax?: string | null;
 }
 
@@ -99,7 +99,7 @@ export interface PolicyEvaluationResult {
   grantSatisfied: boolean;
 }
 
-// ─── toolPattern 匹配（§6.4 正式形态） ────────────────────
+// ─── toolPattern 匹配（正式形态） ────────────────────
 /** 规范化：裸名（无前缀）补 `tool.` 前缀；已带前缀原样（对齐 legacy 零回归语义）。 */
 const PREFIX_RE = /^(tool|mcp|web|docs|custom|external)\b/;
 function normalizePattern(pattern: string): string {
@@ -123,7 +123,7 @@ export function matchPolicyPattern(pattern: string, toolKey: string): boolean {
   return norm === toolKey;
 }
 
-// ─── argMatcher 匹配（§6.5；fail-closed） ─────────────────
+// ─── argMatcher 匹配（fail-closed） ─────────────────
 function normalizePathForMatch(raw: string): string {
   const p = raw.replace(/^(\/|\.\/)+/, "");
   const parts = p.split("/").filter(Boolean);
@@ -191,7 +191,7 @@ function ruleMatches(rule: PolicyRuleView, input: PolicyEvaluatorInput): boolean
 
 /**
  * 规则集合排序：priority DESC → decision(block>pause>allow) → toolPattern ASC → ruleKey ASC。
- * 与 computePolicyRulesHash 的 canonical 排序一致（§7）。
+ * 与 computePolicyRulesHash 的 canonical 排序一致。
  */
 export function sortPolicyRules(rules: readonly PolicyRuleView[]): PolicyRuleView[] {
   return [...rules].sort((a, b) => {
@@ -310,10 +310,10 @@ function buildResult(
 }
 
 /**
- * 正式策略评估（纯函数，§15）。
+ * 正式策略评估（纯函数）。
  *
  * 流程：
- * 1. 平台不可关闭强制规则：命中 → fail-closed block（§15.2 最顶）。
+ * 1. 平台不可关闭强制规则：命中 → fail-closed block（最顶）。
  * 2. PolicyRevision 规则：取首个 toolPattern+argMatcher+scope 全匹配规则；无 → defaultDecision。
  *    policy block → 立即 block（任何东西不能降级 block）。
  * 3. Agent 更严要求：只收紧（block/pause > allow），绝不放宽；block 已返回则不再收紧。
@@ -343,7 +343,7 @@ export function evaluatePolicy(input: PolicyEvaluatorInput): PolicyEvaluationRes
     ? { ruleKey: matched.ruleKey, toolPattern: matched.toolPattern, decision: matched.decision }
     : null;
 
-  // block 永不降级（§15.2）。
+  // block 永不降级。
   if (policyDecision === "block") {
     return buildResult("block", matchedMeta, false, false, input);
   }

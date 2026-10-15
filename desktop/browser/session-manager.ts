@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：Session partition 管理器。
+ * Session partition 管理器。
  *
  * 管理 Electron Session partition 名称：
  * - App Session（NexHarness BrowserWindow）：persist:nexharness-app
@@ -10,7 +10,6 @@
  * 隐身 session 不使用 persist: 前缀，关闭后数据不持久化。
  * App Session 和 Browser Profile Session 完全隔离。
  *
- * 参考架构：docs/solutions/v10-macos-desktop-web-preview/02-desktop-browser-architecture.md §5。
  */
 
 /** App Session partition（NexHarness BrowserWindow 使用） */

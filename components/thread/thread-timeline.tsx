@@ -1,13 +1,10 @@
 /**
- * Thread 任务时间线（ /  / W3-3）。
+ * Thread 任务时间线。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   「时间线覆盖用户与 Agent Item、公开进度、ToolCall、Artifact、UserAction、Child Thread 与 Job 结果投影」
- *   「长 Thread、密集 Tool/Event 和大 Artifact 列表保持可交互，按需加载不改变事件顺序」
- * - docs/solutions/desktop-ui-redesign/04-light-theme-and-conversation.md §4（W3-3 分层原则）
+ * 「时间线覆盖用户与 Agent Item、公开进度、ToolCall、Artifact、UserAction、Child Thread 与 Job 结果投影」
+ * 「长 Thread、密集 Tool/Event 和大 Artifact 列表保持可交互，按需加载不改变事件顺序」
  *
- * W3-3 信息架构（视觉基准：03 原型）：
+ * 信息架构（视觉基准：原型稿）：
  * - 过程层：同一 Turn 的平台执行与 AgentCall 统一收进“用时”折叠区；
  * - 结论层：assistant_message 全宽正文；
  * - 行动项层：user_action / artifact 重卡片，独立渲染不进折叠；
@@ -15,7 +12,7 @@
  *
  * 职责（保持）：
  * - 按 item_sequence 升序渲染；superseded 默认隐藏；
- * - 超过阈值启用虚拟化（W3-3 起以"段"为虚拟化单位）；
+ * - 超过阈值启用虚拟化（起以"段"为虚拟化单位）；
  * - 流式状态指示（aria-live）；新内容自动滚动到底部。
  */
 "use client";
@@ -64,7 +61,7 @@ interface ThreadTimelineProps {
 
 /**
  * 渲染段：过程段（同 Turn 连续 tool_call 聚合）或普通 Item 段。
- * 聚合规则（方案 §4.1）：仅 tool_call 进过程段；跨 Turn 不合并；
+ * 聚合规则：仅 tool_call 进过程段；跨 Turn 不合并；
  * 被 assistant_message / 行动项打断后开新段。
  */
 type TimelineSegment =
@@ -483,7 +480,7 @@ export function ThreadTimeline({
             <TurnRunningIndicator turn={activeTurn} items={items} />
           )}
 
-          {/* 连接异常提示（W4-1）。
+          {/* 连接异常提示。
             正常连接（open）不提示——健康状态无需占用视线；
             仅在重连/重新同步时以最低视觉权重呈现一行淡灰小字，附带重连进度。 */}
           {(streamStatus === "reconnecting" || streamStatus === "resnapshot") && (

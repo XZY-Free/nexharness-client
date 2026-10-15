@@ -1,13 +1,13 @@
 /**
  * 员工端 Thread 客户端（高层 API）。
  *
- * 职责（S10-W01）：
+ * 职责：
  * - 加载 snapshot（GET /api/threads/{id}/items），建立基线。
  * - 启动 SSE 订阅，按 sequence 增量应用事件。
  * - EVENT_CURSOR_EXPIRED / EVENT_SEQUENCE_GAP → 自动 resnapshot。
  * - 网络中断 → SSE 客户端自动重连（用 lastAppliedEventSequence 作为 Last-Event-ID）。
  *
- * A11（执行代际）：
+ * 执行代际：
  * - 每次建立新连接时**重置代际比较基准**（服务端发号只保证单进程单调，跨连接不可比），
  *   等待本连接的第一条 `stream.generation` 权威基线。
  * - 收到畸形/缺失代际的 delta、或同 epoch 换 Owner/Attempt 的协议冲突 → 丢弃该 delta 并做
@@ -64,12 +64,12 @@ export function requiresSnapshotRefresh(event: ClientEvent): boolean {
 }
 
 /**
- * A11：窗口内有界的权威刷新次数上限。
+ * 窗口内有界的权威刷新次数上限。
  *
  * 畸形代际或协议冲突可能连续出现；超限后不再刷新，避免"每条坏消息 → 重连"退化成无限重连。
  */
 export const MAX_AUTHORITATIVE_REFRESHES_PER_WINDOW = 3;
-/** A11：权威刷新计数窗口（毫秒）。 */
+/** 权威刷新计数窗口（毫秒）。 */
 export const AUTHORITATIVE_REFRESH_WINDOW_MS = 30_000;
 
 /** 创建 Thread 客户端。 */
@@ -85,7 +85,7 @@ export function createThreadClient(config: ThreadClientConfig): ThreadClient {
   let generation = 0;
 
   /**
-   * A11：权威刷新的有界记忆（窗口内时间戳）。
+   * 权威刷新的有界记忆（窗口内时间戳）。
    *
    * 畸形代际 / 协议冲突都可能连续出现；刷新必须**有界**，否则每次坏消息都重连会退化成
    * 无限重连。超限后不再刷新，等待下一次权威基线（服务端每有正式事件推进就会重发）纠正。
@@ -98,7 +98,7 @@ export function createThreadClient(config: ThreadClientConfig): ThreadClient {
   }
 
   /**
-   * A11：请求一次**有界**的权威刷新（重新读取正式事实并重建连接）。
+   * 请求一次**有界**的权威刷新（重新读取正式事实并重建连接）。
    *
    * - 窗口外的时间戳被丢弃，只看最近 `AUTHORITATIVE_REFRESH_WINDOW_MS` 内的次数。
    * - 已达上限 → 本次不刷新（不产生任何重连）；由下一次权威基线自行纠正。
@@ -232,7 +232,7 @@ export function createThreadClient(config: ThreadClientConfig): ThreadClient {
           }
         },
         onTransient: (event) => {
-          // A11：同 epoch 换 Owner/Attempt = 协议冲突 → 停止应用并刷新权威事实。
+          // 同 epoch 换 Owner/Attempt = 协议冲突 → 停止应用并刷新权威事实。
           // 判定与 reducer 共用同一实现（classifyTransientDelta）；这里只决定"是否刷新"，
           // 正文改动一律由 reducer 按同一判定处理。
           if (classifyTransientDelta(store.getState().generationBaseline, event) === "conflict") {
@@ -244,7 +244,7 @@ export function createThreadClient(config: ThreadClientConfig): ThreadClient {
           store.dispatch({ type: "stream.generation", baseline });
         },
         onTransientRejected: () => {
-          // A11：缺代际 / 畸形 epoch → 该 delta 已被 parser 丢弃；此处只做有界权威刷新。
+          // 缺代际 / 畸形 epoch → 该 delta 已被 parser 丢弃；此处只做有界权威刷新。
           requestAuthoritativeRefresh();
         },
         onCursorExpired: (error) => {
@@ -258,7 +258,7 @@ export function createThreadClient(config: ThreadClientConfig): ThreadClient {
       },
     );
     store.dispatch({ type: "stream.status", status: "connecting" });
-    // A11：新连接 = 新的比较基准。先丢弃上一连接的暂存与旧基准，等待本连接的第一条
+    // 新连接 = 新的比较基准。先丢弃上一连接的暂存与旧基准，等待本连接的第一条
     // `stream.generation`；已显示的临时正文不在这里预先删除（换代由新基线证明）。
     store.dispatch({ type: "stream.generation_reset" });
     sseHandle.start();

@@ -1,9 +1,9 @@
 /**
- * Agent 消息 Item（assistant_message）——W3-3 全宽正文形态（方案 §4.1）。
+ * Agent 消息 Item（assistant_message）——全宽正文形态。
  *
  * content 结构：{ text }
  *
- * 形态（视觉基准：03 原型 .msg-ai）：
+ * 形态（对齐原型 .msg-ai）：
  * - 正式回复 = 全宽正文，无气泡、无边框、无底色（"结论层"）。
  * - 流式中（pending）末尾显示闪烁光标。
  * - 失败显示错误提示行。

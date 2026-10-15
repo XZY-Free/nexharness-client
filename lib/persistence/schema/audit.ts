@@ -1,9 +1,6 @@
 /**
  * 公共账本 schema：审计账本 audit_event。
  *
- * 事实源：docs/architecture/persistence.md §8、
- * docs/architecture/security.md 。
- *
  * 管理、安全、授权和敏感查看的不可修改审计事实：
  * - 发布、路由、策略、授权、Credential、删除、Legal Hold、隔离事件处理、诊断内容查看和导出均写审计。
  * - Audit 记录 actor、action、target、before/after hash、reason 和 request id，不复制无关聊天正文。
@@ -58,7 +55,7 @@ export const AUDIT_ACTION_TYPES = [
   "legal_hold.manage",
   "deletion.request",
   "audit.export",
-  // 管理导出动作（S11-W08）：requested/completed/failed 与 downloaded 审计事件
+  // 管理导出动作：requested/completed/failed 与 downloaded 审计事件
   "admin.export.requested",
   "admin.export.completed",
   "admin.export.failed",
@@ -66,7 +63,7 @@ export const AUDIT_ACTION_TYPES = [
   // 敏感查看类动作（只读但需审计）
   "diagnostic.view",
   "audit.read",
-  // 运行时安全动作（S12-W05）：Workload Token 撤销审计
+  // 运行时安全动作：Workload Token 撤销审计
   "workload.token.revoked",
   // 备份恢复演练动作（S12-W08）：recovery.drill 审计（发起/完成/失败/取消）
   "recovery.drill",

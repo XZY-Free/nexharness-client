@@ -127,7 +127,7 @@ function readFileText(file: File): Promise<string> {
 }
 
 interface AgentContractRegistrationPanelProps {
-  /** 登记成功后以完整响应回调（刷新 Agent/Snapshot 列表，07 §4）。 */
+  /** 登记成功后以完整响应回调（刷新 Agent/Snapshot 列表）。 */
   readonly onRegistered?: (result: RegisterAgentContractResponse) => void;
   readonly submitLabel?: string;
   readonly compact?: boolean;

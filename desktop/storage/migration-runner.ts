@@ -1,5 +1,5 @@
 /**
- * V10 Phase 3：SQLite migration 执行器。
+ * SQLite migration 执行器。
  *
  * 读取指定目录下的 .sql 文件，按文件名排序后依次执行。
  * 已执行的 migration（记录在 _migrations 表中）不重复执行。

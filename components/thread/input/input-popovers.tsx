@@ -220,7 +220,7 @@ export interface AgentOption {
   readonly id: string;
   readonly displayName: string;
   readonly agentKey?: string;
-  /** 能力摘要（09 §4：员工 Selector 展示"可处理什么"，非函数列表）。 */
+  /** 能力摘要（员工 Selector 展示"可处理什么"，非函数列表）。 */
   readonly capabilitySummary?: string | null;
 }
 

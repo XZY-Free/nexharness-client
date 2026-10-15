@@ -1,16 +1,16 @@
 /**
- * 三层 runtime 稳定 interface（蓝图 ）。
+ * 三层 runtime 稳定 interface。
  *
  * 把三层 runtime 职责分散到三个文件，但按 「单一实现不抽」显式拒绝
  * 抽 interface。第二个 runtime 实现（容器）出现，该前提失效，抽象不再空壳——
  * 本文件定义三个稳定 interface，host / container 实现都满足之。
  *
  * 设计取舍（零行为变更）：
- * - 方法签名贴合现有 `lib/workspace` / `lib/preview/manager` / `tools.ts` 的 execa 逻辑，
- * 而非方案 草案签名（read→Buffer / write→{bytes} 等）。零回归优先于签名理想化；
+ * - 方法签名贴合现有 execa 调用逻辑，
+ * 而非草案签名（read→Buffer / write→{bytes} 等）。零回归优先于签名理想化；
  * 若后续 container 实现需要更丰富语义，再在 interface 上增量演进。
  * - WorkspaceStore / ExecutionRuntime 绑定 threadId（构造注入）；PreviewRuntime 不绑定，
- * 方法接收 threadId（与现有全局 Map 单例语义一致，preview-gate 与 api/preview 共用）。
+ * 方法接收 threadId（与现有全局 Map 单例语义一致）。
  */
 
 // ─── WorkspaceStore ──────────────────────────────────────────
@@ -215,7 +215,7 @@ export interface ResourceQuota {
 }
 
 /**
- * Runtime 能力上报(蓝图 §10 / §1)。
+ * Runtime 能力上报。
  *
  * - runtimeType: host / container(不含 k8s)。
  * - imageVersion: container 模式的镜像版本(host 无)。

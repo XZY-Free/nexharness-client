@@ -22,7 +22,7 @@ import StudioSkillDetailRoute from "./routes/studio-skill-detail";
 import StudioSkillsRoute from "./routes/studio-skills";
 
 /**
- * NexHarness Web SPA 路由表（搬迁自 nexharness app/ 页层）。
+ * NexHarness Web SPA 路由表。
  *
  * - /chat、/chat/:threadId：使用端；/studio/*：管理后台（StudioShell 门禁与导航）。
  * - /login：登录入口（客户端 302 到 auth-center，票据经 /api/session/exchange 落地）。

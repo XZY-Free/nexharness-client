@@ -1,7 +1,7 @@
 /**
  * 轻量 i18n 字典。
  *
- * 12-系统性迁移——DICT 字典覆盖 Studio 各面板 + chat-panel 用户可见文案。
+ * DICT 字典覆盖 Studio 各面板 + chat-panel 用户可见文案。
  * 各组件用 t("key") 替代硬编码中文。STATUS_LABEL / TOOL_LABELS 保留独立导出（高频共享）。
  *
  * 不引入 next-intl 重框架,用简单字典 + t() 函数,按 locale 切换（当前仅 zh,预留 en 扩展）。

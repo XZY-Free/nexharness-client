@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { authCenterBaseUrl } from "../lib/runtime-config";
 
 /**
- * 登录入口（302 壳，搬迁自 nexharness app/login/page.tsx）。
+ * 登录入口（302 壳）。
  *
  * SPA 不提供登录表单：直接跳到 auth-center 门户（`{auth-center}/login?returnTo=`），
  * 登录完成后回跳本地址并附 `?ticket=`，由引导逻辑 /api/session/exchange 落地会话。

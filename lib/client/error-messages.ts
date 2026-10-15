@@ -1,11 +1,8 @@
 /**
  * 错误码 → 员工可理解语义映射。
  *
- * 事实源：
- * - docs/contracts/error-codes.json（normative）
  * - lib/error-codes.ts（运行时投影，仅含 {http, retryable}）
- * - docs/architecture/product-surfaces-and-admin.md
- * S10-W01：「错误展示使用错误目录中的中文语义和可恢复动作，不把内部堆栈直接暴露给员工」
+ * 「错误展示使用错误目录中的中文语义和可恢复动作，不把内部堆栈直接暴露给员工」
  *
  * 职责：
  * - 本模块只负责「码 → 中文 + 可恢复动作」的映射，不改变 contract_version 管控的 error-codes.json。

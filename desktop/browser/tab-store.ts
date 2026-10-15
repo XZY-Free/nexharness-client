@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：Browser tab 内存状态管理。
+ * Browser tab 内存状态管理。
  *
  * 纯逻辑模块，不依赖 electron。管理 Thread 级 tab 分组、active tab、
  * new/close/switch/reorder 操作。WebContentsView 生命周期由 BrowserController 管理。

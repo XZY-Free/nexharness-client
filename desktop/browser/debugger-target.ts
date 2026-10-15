@@ -1,5 +1,5 @@
 /**
- * V10 Phase 6：Electron WebContents Debugger 适配器。
+ * Electron WebContents Debugger 适配器。
  *
  * 包装 Electron 的 `webContents.debugger` API，实现纯逻辑的
  * DebuggerSessionTarget 接口，使其可在 DebuggerSessionScheduler 中使用。

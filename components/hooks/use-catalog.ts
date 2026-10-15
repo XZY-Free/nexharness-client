@@ -1,10 +1,7 @@
 /**
- * 员工端 Catalog Hook（S10-W04）。
+ * 员工端 Catalog Hook。
  *
- * 事实源：
- * - docs/architecture/capability-and-collaboration-api.md §2（Employee Catalog API）
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W04：「Agent、模型、Skill 与位置选择」
+ * 「Agent、模型、Skill 与位置选择」
  *
  * 职责：
  * - 调用 GET /api/catalog/options 拉取目录条目（按 resource_type 过滤）。

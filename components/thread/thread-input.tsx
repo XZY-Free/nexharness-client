@@ -1,5 +1,5 @@
 /**
- * Thread 输入框（W3-4 / W4-1 重构）。
+ * Thread 输入框。
  *
  * 结构：
  * - 大圆角（20px）容器，focus-within 边框加深 + 阴影浮起。
@@ -8,13 +8,13 @@
  * - Enter 发送，Shift+Enter 换行，无常驻快捷键提示文字。
  * - 底部工具行：[＋] [助手选择器]（弹性空间）[模型选择器] [右下圆钮]
  *
- * W4-1 右下圆钮状态机（参考 codex 截图 3）：
+ * 右下圆钮状态机：
  * - 运行中 + 输入框为空 → 蓝色实心圆 + ■（点击 = pause，不弹确认）。
  * - 运行中 + 输入框有文字 → Send 箭头（消息送进 PendingInput 队列）。
  * - 空闲 → Send 箭头（创建正式 Turn）。
  * - 已请求暂停（lastInterrupt !== null）→ 圆钮禁用，等待 Runtime 确认后切换为继续。
  *
- * W4-1 引导：PendingInputQueue 的 ↳ 引导 按钮调用本组件的 useTurnControls.steer，
+ * 引导：PendingInputQueue 的 ↳ 引导 按钮调用本组件的 useTurnControls.steer，
  * 把排队消息升级为对当前 Turn 的即时引导；成功后 PendingInputQueue 自行从队列移除。
  */
 "use client";
@@ -120,7 +120,7 @@ export function ThreadInput({
     threadId,
     latestTurn,
   });
-  // W4-1：停止/引导由 ThreadInput 内部承载，不再依赖顶部 TurnControls。
+  // 停止/引导由 ThreadInput 内部承载，不再依赖顶部 TurnControls。
   // onSubmitText 用于新建会话首条消息（无 Turn），此时不需要 steer/interrupt。
   const turnId = latestTurn?.id ?? "";
   const {
@@ -276,7 +276,7 @@ export function ThreadInput({
   return (
     <div className="sticky bottom-0 z-20 shrink-0 bg-background/95 pt-2 pb-[calc(14px+env(safe-area-inset-bottom))] backdrop-blur-md">
       <div className="composer-track">
-        {/* W4-1：待办队列移入输入框上方，宽度与输入框对齐；仅在真实 Thread 下渲染。 */}
+        {/* 待办队列移入输入框上方，宽度与输入框对齐；仅在真实 Thread 下渲染。 */}
         {threadId !== null && isRunning && !onSubmitText && (
           <PendingInputQueue threadId={threadId} onSteer={handleSteer} parentBusy={turnBusy} />
         )}

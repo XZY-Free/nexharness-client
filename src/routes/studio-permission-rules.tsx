@@ -25,12 +25,12 @@ interface PermissionRulesWire {
 }
 
 /**
- * Studio Permission Rules 页（关口02 02-6 · 冻结方案 §30 / §54-P3 · 页面数据 API 化）。
+ * Studio Permission Rules 页（页面数据 API 化）。
  *
  * - policy.read 即可查看当前生效 Policy Revision 的规则（ruleKey 稳定身份；403 → 门禁页）。
  * - policy.publish 时渲染可编辑表单（快照轻量断言）；保存走 PUT /studio/api/permission-rules +
- *   If-Match/ETag（§33），发布一个全新 Policy Revision（绝不原地改 published rows，§30）。
- * - 正式决策值仅 allow/pause/block（§P3）；数据来自 GET /studio/api/permission-rules。
+ *   If-Match/ETag，发布一个全新 Policy Revision（绝不原地改 published rows）。
+ * - 正式决策值仅 allow/pause/block；数据来自 GET /studio/api/permission-rules。
  */
 export default function PermissionRulesPage() {
   const { snapshot } = useStudioContext();

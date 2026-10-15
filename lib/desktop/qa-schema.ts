@@ -1,12 +1,11 @@
 /**
- * ：QA 结果 schema 统一层。
+ * QA 结果 schema 统一层。
  *
  * 这是 Server 与 Desktop 共享的纯类型边界，无运行时依赖（与 `lib/desktop/redaction.ts`
- * 同构约束）。Web Playwright QA 与 Desktop CDP QA 产出同一形状的结果，AI 工具
- * （`lib/ai/tools/qa.ts`）、QA gate（`lib/qa/gate.ts`）、Studio QA API
- * （`app/studio/api/threads/[id]/qa/route.ts`）都依赖此 schema，不再区分产出者。
+ * 同构约束）。Web Playwright QA 与 Desktop CDP QA 产出同一形状的结果，AI 工具、QA gate、
+ * Studio QA API 都依赖此 schema，不再区分产出者。
  *
- * 设计约束（02-desktop-browser-architecture.md §9）：
+ * 设计约束：
  * - Web 端仍使用服务端 Playwright QA，不为 Web iframe 建立桌面 RPC 依赖
  * - Desktop 端 QA 独立运行，两端只统一结果 schema
  * - Desktop 截图先落本机临时加密文件，需成为 Thread Artifact 时再上传 Server
@@ -63,7 +62,7 @@ export interface QaNetworkResponse {
 }
 
 /**
- * QA 登录态（V10 暂未启用，字段保留供 Desktop RPC 派生）。
+ * QA 登录态（暂未启用，字段保留供 Desktop RPC 派生）。
  *
  * 与 Playwright `storageState` 同构，QA 隐藏 context 可继承用户登录态。
  */

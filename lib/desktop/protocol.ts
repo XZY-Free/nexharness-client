@@ -1,5 +1,5 @@
 /**
- * ：Agent Bridge 协议版本管理。
+ * Agent Bridge 协议版本管理。
  *
  * Server 和 Desktop 共享的协议版本号。Server 在 RPC 信封中声明 protocolVersion，
  * Desktop 收到后校验是否与本地兼容。不兼容时进入 protocol_mismatch 状态，拒绝处理。

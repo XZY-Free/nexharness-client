@@ -9,14 +9,11 @@ import {
 import { useStudioContext } from "@/components/studio/studio-shell";
 
 /**
- * 统一管理后台 — 安全与审计页（S11-W01 整合）。
+ * 统一管理后台 — 安全与审计页（整合）。
  *
  * 一级导航「安全与审计」整合原 /studio/audit + /studio/policies + 权限规则 +
  * Credential 引用 + Legal Hold + 删除请求。本页提供入口聚合，
- * S11-W08 将扩展并发控制、导出审计与端到端验证。
  *
- * 事实源：
- * - docs/architecture/runtime-control-plane.md
  *   「安全与审计」：Policy、Permission、Credential 引用、Effect、Audit 和事件处置
  *
  * 门禁（studio.access）由 StudioShell 统一承担（页面数据 API 化）；

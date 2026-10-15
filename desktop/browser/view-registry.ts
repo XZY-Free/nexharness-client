@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：View 注册表。
+ * View 注册表。
  *
  * 纯逻辑模块，管理 tabId 到 WebContentsView 引用的映射。
  * 处理 active tab 切换时的显示/隐藏逻辑。

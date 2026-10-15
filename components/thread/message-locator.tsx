@@ -17,7 +17,7 @@ interface TurnTick {
   readonly label: string;
 }
 
-/** v7 合同参数：固定步长 12px、整簇垂直居中；磁吸半径 5 回合（回合坐标空间）；
+/** 合同参数：固定步长 12px、整簇垂直居中；磁吸半径 5 回合（回合坐标空间）；
  * 静止宽 10px / opacity 0.35；聚焦宽 30px / opacity 1；左缘对齐仅向右生长；
  * 在轴零过渡直跟，离轴 140ms 收拢；左侧自由边距 < 32px 隐藏。 */
 const FIXED_STEP = 12;

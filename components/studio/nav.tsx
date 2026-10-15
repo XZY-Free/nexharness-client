@@ -23,7 +23,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Studio 一级导航（侧栏改版 v3，合同见 docs/V12/01/admin-shell-redesign-demo）。
+ * Studio 一级导航（侧栏改版）。
  *
  * - 头部仅「返回使用端」一个动作：上下文标识由动作语义承载，不设产品标题块。
  * - 不设嵌入搜索：再引入阈值＝一级目的地 ≥10 或设置两级化，届时做全局命令面板。
@@ -32,7 +32,7 @@ import { useEffect, useMemo, useState } from "react";
  * - 三档响应式（Web/Desktop 共用一套）：≥1024 全栏 240px；768–1023 图标 rail 56px；
  *   <768 汉堡＋抽屉。
  *
- * 菜单权限由服务端计算（S11-W01），本组件只负责展示与路由归属。
+ * 菜单权限由服务端计算，本组件只负责展示与路由归属。
  */
 
 type NavItem = {

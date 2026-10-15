@@ -13,11 +13,7 @@ import { snapshotAllowsAnyScope } from "@/lib/client/studio-permissions";
  * 统一管理后台 — 运营页。
  *
  * 一级导航「运营」展示使用量、成本、队列、配额、失败与服务水平。
- * 当前接入最小 Route 激活入口（07 §12）；S11-W07 将填充 cost/capacity 投影表 + 告警。
- *
- * 事实源：
- * - docs/architecture/runtime-control-plane.md
- *   「运营」：使用量、成本、队列、配额、失败与服务水平
+ * 当前接入最小 Route 激活入口。
  *
  * 门禁由 StudioShell 承担；canManage 为快照轻量断言（服务端 RouteSet API 兜底）。
  */

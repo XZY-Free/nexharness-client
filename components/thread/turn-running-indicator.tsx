@@ -1,9 +1,6 @@
 /**
  * Turn 运行状态指示（真实状态反馈，非 token streaming）。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md /W03。
- *
  * 冻结语义：
  * - 状态只来自正式 Turn 投影（turn_state：accepted/queued → 正在准备...；
  *   running/regenerating → 正在处理...）。waiting_user/completed/failed 等

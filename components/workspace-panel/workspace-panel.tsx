@@ -130,7 +130,7 @@ function renderBody(
   onSelectPath: (path: string) => void,
 ) {
   if (view.kind === "app") {
-    // V9 阶段 5：主流程已切到 WorkbenchPanel 在内置浏览器打开运行页；
+    // 主流程已切到 WorkbenchPanel 在内置浏览器打开运行页；
     // 此处仅作兼容占位（如旧 WorkspacePanel 仍被显式渲染时）。
     return (
       <div className="flex h-full items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">

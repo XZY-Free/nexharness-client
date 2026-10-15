@@ -1,6 +1,6 @@
 import * as path from "node:path";
 /**
- * V10 Phase 3：BrowserWindow 创建与安全加固。
+ * BrowserWindow 创建与安全加固。
  *
  * 安全默认值遵循 Electron 官方安全检查清单：
  * - contextIsolation: true（renderer 与 preload 上下文隔离）

@@ -1,9 +1,7 @@
 /**
- * 员工端 PendingInput 队列 Hook（S10-W03）。
+ * 员工端 PendingInput 队列 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W03：「PendingInput 可编辑、删除和排序，尚未正式发送的内容不出现在消息历史」
+ * 「PendingInput 可编辑、删除和排序，尚未正式发送的内容不出现在消息历史」
  *
  * 职责：
  * - 加载 Thread 的 PendingInput 队列（GET /api/threads/{id}/pending-inputs）。

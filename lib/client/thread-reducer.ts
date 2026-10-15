@@ -1,11 +1,7 @@
 /**
  * 员工端 Thread 投影 Reducer。
  *
- * 事实源：
- * - docs/architecture/api-and-events.md （恢复规则）
- * - docs/architecture/product-surfaces-and-admin.md S10-W01
- *
- * 核心职责（S10-W01）：
+ * 核心职责：
  * - 以 Thread snapshot 为基线、ThreadEvent sequence 为增量维护客户端状态。
  * - 相同 event_id、重复 SSE、旧 sequence、snapshot 重载不会重复插入消息或倒退状态。
  *
@@ -23,7 +19,7 @@
  * response.delta 通过独立 stream.delta action 投影为 pending Agent Item，不推进持久 sequence；
  * 其余 Runtime 私有 transient 事件不进入会话投影。
  *
- * A11（执行代际隔离）：
+ * 执行代际隔离：
  * - 临时 Item 的 id 至少包含**完整代际 tuple**（Invocation/Attempt/Ownership/epoch），不再只有
  *   Turn。同一个 Turn 被后续代际继续使用时，两代正文不可能落进同一条临时正文。
  * - 分类只用服务端权威基线（`Turn.activeInvocationId` → 当前 active Ownership）：**不**比较
@@ -53,10 +49,10 @@ import type {
   ThreadProjectionState,
 } from "./types";
 
-/** A11：单个 Turn 的暂存增量上限（有界暂存，防止基线长期不来时无限堆积）。 */
+/** 单个 Turn 的暂存增量上限（有界暂存，防止基线长期不来时无限堆积）。 */
 export const MAX_PENDING_TRANSIENT_PER_TURN = 64;
 
-/** A11：本地临时正文的 Item id 前缀（snapshot 合并据此识别"非服务端 Item"）。 */
+/** 本地临时正文的 Item id 前缀（snapshot 合并据此识别"非服务端 Item"）。 */
 const TRANSIENT_ITEM_PREFIX = "stream-";
 
 /** 线上代际（snake_case）→ 契约代际（camelCase）。 */
@@ -90,7 +86,7 @@ function toNullableContractBaseline(
 }
 
 /**
- * A11 决策表的唯一实现：一条 transient 相对当前权威基线应当如何处置。
+ * 决策表的唯一实现：一条 transient 相对当前权威基线应当如何处置。
  *
  * | 情形 | 结果 |
  * |---|---|
@@ -274,7 +270,7 @@ function isItemEqual(a: ClientItem, b: ClientItem): boolean {
 }
 
 /**
- * W4-1：合并 snapshot items 与现有 items，最大化引用稳定性。
+ * 合并 snapshot items 与现有 items，最大化引用稳定性。
  *
  * 后端 item.created 事件 payload 不含完整 item（只含 item_type + content_hash），
  * 导致每个 item.created 都触发 resnapshot。如果 snapshot.loaded 直接用新数组替换，
@@ -282,7 +278,7 @@ function isItemEqual(a: ClientItem, b: ClientItem): boolean {
  *
  * 合并策略：
  * - 保留仍然**属于当前权威代际**的 transient items（id 以 `stream-` 开头），它们不在服务端
- *   snapshot 中。A11：换代后旧代的临时正文不得被 snapshot 合并带回来，因此由调用方传入
+ *   snapshot 中。换代后旧代的临时正文不得被 snapshot 合并带回来，因此由调用方传入
  *   `keepTransient` 判定（基线未到时保留，基线证明换代后移除）。
  * - 如果 snapshot 中已有同 turn_id 的 assistant_message（AI 回复已完成），
  * 移除对应的 transient item，避免重复显示。
@@ -457,7 +453,7 @@ function applyEventToItems(
     case "item.updated": {
       const item = extractItemFromPayload(event.payload);
       if (!item) return null;
-      // A11：正式 assistant_message 成立 → 该 Turn 的**所有代际**临时正文一并退出
+      // 正式 assistant_message 成立 → 该 Turn 的**所有代际**临时正文一并退出
       // （临时 Item 现在按完整 tuple 分键，不能再只删 `stream-${turn_id}` 这一个键）。
       const withoutTransient =
         item.item_type === "assistant_message"
@@ -489,7 +485,7 @@ export function threadProjectionReducer(
 ): ThreadProjectionState {
   switch (action.type) {
     case "snapshot.loading": {
-      // W4-1：已有 items 时的 resnapshot 不改 snapshotStatus，避免 UI 显示全屏 spinner。
+      // 已有 items 时的 resnapshot 不改 snapshotStatus，避免 UI 显示全屏 spinner。
       // 后端 item.created 事件 payload 不含完整 item → 触发 resnapshot → snapshot.loading。
       // 如果此时把 snapshotStatus 改成 "loading"，UI 会显示全屏 spinner，
       // 即使 items 仍保留在 store 中。已有内容时保持 "ready"，静默刷新。
@@ -509,9 +505,9 @@ export function threadProjectionReducer(
     }
 
     case "snapshot.loaded": {
-      // W4-1：用 mergeSnapshotItems 合并而非完全替换，保留未变化的 item 引用 +
+      // 用 mergeSnapshotItems 合并而非完全替换，保留未变化的 item 引用 +
       // transient items（stream-xxx），避免 resnapshot 导致 ThreadTimeline 整体重绘。
-      // A11：临时正文还必须仍属于当前权威代际 —— 换代后旧代临时前缀不得被 snapshot 带回。
+      // 临时正文还必须仍属于当前权威代际 —— 换代后旧代临时前缀不得被 snapshot 带回。
       const sortedSnapshot = [...action.items].sort((a, b) => a.item_sequence - b.item_sequence);
       const items = mergeSnapshotItems(sortedSnapshot, state.items, (item) =>
         isCurrentTransientItem(item, state.generationBaseline),

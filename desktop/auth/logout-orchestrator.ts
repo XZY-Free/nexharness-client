@@ -1,5 +1,5 @@
 /**
- * V10 Phase 8：退出登录编排。
+ * 退出登录编排。
  *
  * 协调退出登录时的资源清理顺序：
  * 1. 断开 Agent Bridge WebSocket（停止 RPC 通信）
@@ -12,7 +12,7 @@
  * - 不依赖 electron API（通过依赖注入），便于单元测试
  *
  * 注意：此模块只编排 Desktop 本地清理。Server 端的设备撤销需要单独
- * 通过 HTTP revoke API 触发（app/api/desktop/devices/[deviceId]/revoke）。
+ * 通过 HTTP revoke API 触发（服务端设备撤销接口）。
  */
 import type { BridgeClient } from "../bridge/bridge-client";
 import { clearDeviceIdentity } from "../bridge/device-identity";

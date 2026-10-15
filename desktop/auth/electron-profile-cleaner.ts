@@ -1,5 +1,5 @@
 /**
- * V10 Phase 8：Electron BrowserProfileCleaner 生产实现。
+ * Electron BrowserProfileCleaner 生产实现。
  *
  * 包装 Electron session.fromPartition().clearStorageData()，
  * 实现 BrowserProfileCleaner 接口。

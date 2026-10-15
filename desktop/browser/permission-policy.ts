@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：浏览器权限策略。
+ * 浏览器权限策略。
  *
  * 定义 WebContentsView 的 permission、popup、external protocol、
  * certificate 和 download 默认策略。

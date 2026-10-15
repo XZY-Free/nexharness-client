@@ -2,7 +2,7 @@
 
 import { DesktopBrowserSurface } from "@/components/desktop/desktop-browser-surface";
 /**
- * V10 Phase 1：三页签工作台（Web 端）。
+ * 三页签工作台（Web 端）。
  *
  * 三页签：工作区 / 预览 / 运行日志
  * - 工作区：FileTree + 可编辑 FileEditor（自动保存 + 冲突检测）
@@ -15,8 +15,8 @@ import { DesktopBrowserSurface } from "@/components/desktop/desktop-browser-surf
  * - view.kind === "preview" → 切到预览页签（旧 preview 统一走 iframe）
  * - 其它 → 默认工作区页签
  *
- * V10 变更：
- * - 删除 BrowserPanel（V9 远程浏览器），替换为 PreviewSurface（iframe）
+ * 相对旧版的变化：
+ * - 移除 BrowserPanel（旧远程浏览器），替换为 PreviewSurface（iframe）
  * - 删除 openAppSignal（不再需要触发 /browser/open-app）
  * - 新增 previewUrl prop（从 session.preview.url 传入）
  * - 新增 previewReloadKey（点击「刷新预览」递增）

@@ -1,9 +1,7 @@
 /**
  * 员工端 Thread Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W01：「以 Thread snapshot 为基线、ThreadEvent sequence 为增量，建立 Web/Desktop 共用的客户端状态投影」
+ * 「以 Thread snapshot 为基线、ThreadEvent sequence 为增量，建立 Web/Desktop 共用的客户端状态投影」
  *
  * 职责：
  * - 把 createThreadClient 绑定到 React 生命周期。

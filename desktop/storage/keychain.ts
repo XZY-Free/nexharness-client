@@ -1,7 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 /**
- * V10 Phase 3：Keychain adapter，包装 Electron safeStorage。
+ * Keychain adapter，包装 Electron safeStorage。
  *
  * 使用 macOS Keychain（通过 Electron safeStorage）加密字符串，
  * 加密后的数据写入 app.getPath('userData')/keychain/<key>.enc 文件。

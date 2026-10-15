@@ -10,7 +10,7 @@ import { ThreadInput } from "./thread-input";
 import { ThreadTimeline } from "./thread-timeline";
 
 interface NewThreadPageProps {
-  /** Agent 目录；缺省时 Selector 自行拉取同一 Employee Catalog（09 §12）。 */
+  /** Agent 目录；缺省时 Selector 自行拉取同一 Employee Catalog。 */
   readonly agents?: readonly AgentOption[];
   /** 平台默认模型（shell.default_model_ref）；用于未显式选择时的即时展示。 */
   readonly defaultModelRef?: string;

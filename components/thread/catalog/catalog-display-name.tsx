@@ -1,9 +1,7 @@
 /**
  * Catalog 显示名组件。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   「Thread 顶部展示 Agent 显示名 / Environment 显示名」
+ * 「Thread 顶部展示 Agent 显示名 / Environment 显示名」
  *
  * 职责：
  * - 接受 resourceId + resourceType，自动从 Catalog API 拉取 display_name。

@@ -1,10 +1,6 @@
 /**
  * 用户操作 Item（user_action）—  统一四类 UserAction 体验。
  *
- * 事实源：
- * - docs/architecture/api-and-events.md §3.18（解析 UserActionRequest）
- * - docs/architecture/product-surfaces-and-admin.md
- *
  * content 结构（按 request_type）：
  * - 通用字段：{ request_type, purpose?, reason?, impact?, state?, expires_at?, title?, summary? }
  * - confirmation：{ target_path?, line_additions?, line_deletions?, diff? }

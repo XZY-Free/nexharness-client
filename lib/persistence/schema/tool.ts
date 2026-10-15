@@ -1,19 +1,13 @@
 /**
- * 控制面 schema：Connection / CredentialRef / ToolProvider / Tool / ToolSchemaRevision
- * （阶段 6 S06-C02）。
- *
- * 事实源：
- * - docs/architecture/persistence.md （能力和治理表）
- * - docs/architecture/capabilities-and-security.md §4（Tool）、§8（MCP）
- * - docs/architecture/capability-and-collaboration-api.md （读取 Tool Schema）
+ * 控制面 schema：Connection / CredentialRef / ToolProvider / Tool / ToolSchemaRevision。
  *
  * 模型边界：
  * - ToolProvider 对内置、HTTP/OpenAPI、MCP 和外部 Adapter 使用协议中立模型。
  * - Tool 保存稳定 id、提供方、风险分类和当前 SchemaRevision。
  * - SchemaRevision 保存机器输入/输出 Schema、描述、风险元数据和 hash。
  * - 模型只提交业务参数；tenant、user、connection、credential 和 trace 由平台注入。
- * - Credential 不进模型上下文（§13）。
- * - 稳定边界是单次 ToolCall（）。
+ * - Credential 不进模型上下文。
+ * - 稳定边界是单次 ToolCall。
  *
  * 关键约束：
  * - UNIQUE(tenantId, connectionKey)：租户内 Connection key 唯一。

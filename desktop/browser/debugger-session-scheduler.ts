@@ -1,5 +1,5 @@
 /**
- * V10 Phase 6：DebuggerSession 调度器（纯逻辑）。
+ * DebuggerSession 调度器（纯逻辑）。
  *
  * 同一 WebContents 只能有一个活跃的 DebuggerSession。本调度器管理 attach/detach
  * 生命周期，防止多个模块并发 attach 导致 CDP 冲突。

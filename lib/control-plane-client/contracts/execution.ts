@@ -32,7 +32,7 @@ export interface ExecutionBindingDTO {
   route_revision_id: string;
   route_activation_id: string;
   route_content_digest: string;
-  /** 冻结的 Runtime 证据。runtime_artifact_* null = external_endpoint（03 §3）。 */
+  /** 冻结的 Runtime 证据。runtime_artifact_* null = external_endpoint。 */
   runtime_artifact_id: string | null;
   runtime_artifact_digest: string | null;
   runtime_evidence_kind: "hosted_artifact" | "external_endpoint";

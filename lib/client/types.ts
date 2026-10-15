@@ -1,11 +1,6 @@
 /**
  * Thread Client Types（线程客户端类型）。
  *
- * 事实源：
- * - docs/architecture/api-and-events.md /（Item 响应、SSE 投影）
- * - docs/architecture/contracts-and-conformance.md（错误 Envelope）
- * - lib/persistence/schema/conversation.ts（Thread/ThreadItem/ThreadEvent 服务端 schema）
- *
  * 与 HTTP wire 对齐：
  * - 字段名一律使用 snake_case（与服务端 projectItem/projectEvent 输出一致）。
  * - 日期使用 ISO 8601 字符串（服务端 toISOString）。
@@ -79,9 +74,9 @@ export type ClientItemType =
 export type ClientItemState = "pending" | "completed" | "failed" | "superseded" | "cancelled";
 
 /**
- * GET /api/threads/{thread_id}/items 返回的 Item 投影（）。
+ * GET /api/threads/{thread_id}/items 返回的 Item 投影。
  *
- * 与服务端 app/api/threads/[threadId]/items/route.ts 的 projectItem 输出一致。
+ * 与服务端 projectItem 输出一致。
  */
 export interface ClientItem {
   readonly id: string;
@@ -95,7 +90,7 @@ export interface ClientItem {
   readonly created_at: string;
 }
 
-/** Item 列表响应（）。 */
+/** Item 列表响应。 */
 export interface ClientItemsResponse {
   readonly items: readonly ClientItem[];
   readonly next_cursor: string | null;
@@ -108,9 +103,9 @@ export interface ClientItemsResponse {
 // ─── Event ───────────────────────────────────────────────────
 
 /**
- * SSE data 投影（）。
+ * SSE data 投影。
  *
- * 与服务端 app/api/threads/[threadId]/events/route.ts 的 projectEvent 输出一致。
+ * 与服务端 projectEvent 输出一致。
  * event_type 通过 SSE `event:` 行传递，不在 data 内重复。
  */
 import type { ActivityEntry } from "@/lib/client/activity-projection";
@@ -134,7 +129,7 @@ export interface ClientEvent extends ClientEventPayload {
 }
 
 /**
- * 执行代际的**线上形态**（A11）。
+ * 执行代际的**线上形态**。
  *
  * 与 `lib/runtime/thread-generation.ts` 的同一份契约一一对应（snake_case 线上名）。
  * `lease_epoch` 是十进制字符串：**禁止** Number 转换（`2^53` 以上会静默丢精度，
@@ -148,7 +143,7 @@ export interface ClientTransientGeneration {
 }
 
 /**
- * 不进入持久 sequence 的模型正文增量（A11：必须携带**完整**代际）。
+ * 不进入持久 sequence 的模型正文增量（必须携带**完整**代际）。
  *
  * 缺 Invocation/Owner/Attempt/epoch 中任何一项都不构成可拼接的增量——parser 直接拒绝，
  * 不回退成"只按 turn_id 拼接"的旧协议。
@@ -268,14 +263,14 @@ export interface ThreadProjectionState {
   /** snapshot 加载状态。 */
   readonly snapshotStatus: "idle" | "loading" | "ready" | "failed";
   /**
-   * A11：服务端权威展示代际基线。
+   * 服务端权威展示代际基线。
    *
    * `null` = 本连接尚未收到基线（或刚重连、比较基准已重置）：此期间 transient 只暂存，
    * 不拼接。收到后即成为判定"这条 delta 是否属于当前展示代际"的唯一依据。
    */
   readonly generationBaseline: ClientGenerationBaseline | null;
   /**
-   * A11：权威基线**未覆盖**的 Turn 的暂存增量（按 turn 分桶、保持到达顺序、有界）。
+   * 权威基线**未覆盖**的 Turn 的暂存增量（按 turn 分桶、保持到达顺序、有界）。
    *
    * 下一个覆盖该 Turn 的权威基线到来时重放；若权威事实判定"无活动执行"则整桶丢弃，
    * 绝不自作主张拼进上一代正文。
@@ -299,7 +294,7 @@ export interface ClientVisibleError {
   readonly requestId: string | null;
 }
 
-// ─── Thread 详情（S10-W02） ──────────────────────────────────
+// ─── Thread 详情 ──────────────────────────────────
 
 /** GET /api/threads/{thread_id} 返回的 Thread 投影。 */
 export interface ClientThread {
@@ -331,7 +326,7 @@ export interface ClientGoal {
   readonly completed_at: string | null;
 }
 
-/** Turn controls（服务端 Binding 派生，05 §9；终态 Turn 恒 false）。 */
+/** Turn controls（服务端 Binding 派生；终态 Turn 恒 false）。 */
 export interface ClientTurnControls {
   readonly cancel_supported: boolean;
   readonly resume_supported: boolean;
@@ -406,7 +401,7 @@ export interface ClientTurnsResponse {
   readonly turns: readonly ClientTurn[];
 }
 
-// ─── PendingInput（S10-W03） ────────────────────────────────
+// ─── PendingInput ────────────────────────────────
 
 /** PendingInput 状态（与服务端 PENDING_INPUT_STATES 一致）。 */
 export type ClientPendingInputState = "pending" | "admitted" | "removed";
@@ -470,7 +465,7 @@ export interface ClientDeletePendingInputResponse {
   readonly queue_etag: string;
 }
 
-// ─── Steer / Interrupt（S10-W03） ──────────────────────────
+// ─── Steer / Interrupt ──────────────────────────
 
 /** POST /api/turns/{turn_id}/steer 响应体（202 Accepted，异步命令）。 */
 export interface ClientSteerResponse {
@@ -495,7 +490,7 @@ export interface ClientInterruptResponse {
   readonly event_id: string;
 }
 
-// ─── Catalog（S10-W04） ─────────────────────────────────────
+// ─── Catalog ─────────────────────────────────────
 
 /** Catalog 资源类型（与服务端 CatalogResourceType 一致）。 */
 export type ClientCatalogResourceType =
@@ -530,7 +525,7 @@ export interface ClientCatalogListResponse {
   readonly catalog_revision: number;
 }
 
-// ─── UserAction 通用解析（S10-W05） ────────────────────────
+// ─── UserAction 通用解析 ────────────────────────
 
 /** POST /api/threads/{thread_id}/user-actions/{request_id}/resolve 响应体（200）。 */
 export interface ClientUserActionResolveResponse {
@@ -548,7 +543,7 @@ export interface ClientUserActionResolveResponse {
   readonly event_ids: readonly string[];
 }
 
-// ─── Environment / Desktop 任务操作台（S10-W06） ───────────
+// ─── Environment / Desktop 任务操作台 ───────────
 
 /** 环境类型（与服务端 ENVIRONMENT_TYPES 一致）。 */
 export type ClientEnvironmentType = "desktop" | "cloud" | "remote" | "sandbox";
@@ -630,7 +625,7 @@ export interface ClientEnvironmentStatusResponse {
   readonly availability: ClientEnvironmentAvailability;
   /** 当前 active Invocation id；null 表示无活跃 Invocation。 */
   readonly active_invocation_id: string | null;
-  /** S10-W07：接管条件聚合（无 active ownership 时为空 conditions）。 */
+  /** 接管条件聚合（无 active ownership 时为空 conditions）。 */
   readonly takeover_conditions: ClientTakeoverConditions;
 }
 
@@ -654,7 +649,7 @@ export interface ClientTakeoverConditions {
   readonly ownership_id: string | null;
 }
 
-/** POST /api/threads/{thread_id}/environment/takeover 响应体（S10-W07）。 */
+/** POST /api/threads/{thread_id}/environment/takeover 响应体。 */
 export interface ClientTakeoverResponse {
   readonly thread_id: string;
   readonly ownership_id: string;
@@ -665,7 +660,7 @@ export interface ClientTakeoverResponse {
   readonly reason_code: string;
 }
 
-// ─── Desktop 本地操作（S10-W06） ──────────────────────────
+// ─── Desktop 本地操作 ──────────────────────────
 
 // 直接复用底层类型，避免双源不一致。
 export type { DesktopOperationCategory, DesktopOperationResult } from "@/lib/desktop/capabilities";
@@ -704,13 +699,13 @@ export type ThreadProjectionAction =
   /** response.delta 到达；只更新临时 Agent Item，不推进持久游标。 */
   | { readonly type: "stream.delta"; readonly event: ClientTransientDelta }
   /**
-   * A11：`stream.generation` 控制消息到达（权威代际基线）。
+   * `stream.generation` 控制消息到达（权威代际基线）。
    *
    * 不推进持久游标；reducer 据此隔离/清理旧的临时正文并重放被基线覆盖的暂存增量。
    */
   | { readonly type: "stream.generation"; readonly baseline: ClientGenerationBaseline }
   /**
-   * A11：新连接建立，代际比较基准失效 —— 丢弃暂存并等待本连接的第一条权威基线。
+   * 新连接建立，代际比较基准失效 —— 丢弃暂存并等待本连接的第一条权威基线。
    *
    * 只重置"判定依据"，不预先删除已显示的临时正文：换代是否发生由新基线证明
    * （服务端发号只保证单进程单调，跨连接不可比）。

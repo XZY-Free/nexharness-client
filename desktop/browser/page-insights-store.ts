@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-3：页面洞察缓冲存储（纯逻辑）。
+ * 页面洞察缓冲存储（纯逻辑）。
  *
  * 按 threadId+tabId 缓冲 Console 和 Network 事件，供 browser.getConsole /
  * browser.getNetwork 命令查询。
@@ -38,7 +38,7 @@ interface BufferedNetworkEntry {
   encodedDataLength?: number;
 }
 
-/** 慢请求阈值（ms），与架构文档 §7 "slow" 过滤一致。 */
+/** 慢请求阈值（ms），与"slow" 过滤一致。 */
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
 /**

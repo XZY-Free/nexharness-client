@@ -1,9 +1,7 @@
 /**
  * 员工端 Thread 默认设置 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W04：「员工在发送消息前选择 Agent / Model / Skill / Environment」
+ * 「员工在发送消息前选择 Agent / Model / Skill / Environment」
  *
  * 职责：
  * - 封装 PATCH /api/threads/{id}/settings 调用。

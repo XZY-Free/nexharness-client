@@ -1,10 +1,8 @@
 /**
- * 员工端 Turn 控制 Hook（S10-W03）。
+ * 员工端 Turn 控制 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W03：「Steer 显示 requested/acknowledged/applied/rejected，不在 Runtime ack 前宣称已经引导」
- *   「暂停请求不在 Runtime ack 前宣称已经暂停」
+ * 「Steer 显示 requested/acknowledged/applied/rejected，不在 Runtime ack 前宣称已经引导」
+ * 「暂停请求不在 Runtime ack 前宣称已经暂停」
  *
  * 职责：
  * - Steer 运行中 Turn（POST /api/turns/{id}/steer，202 Accepted，异步命令）。

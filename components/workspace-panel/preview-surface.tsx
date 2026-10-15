@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * V10 Phase 1：Web iframe Preview Surface。
+ * Web iframe Preview Surface。
  *
  * 取代 V9 BrowserPanel 的 Web 端预览组件。不依赖服务器远程浏览器、WebRTC、CDP Screencast。
  * 直接在 iframe 中加载 /preview/{threadId}/... 反向代理路由（owner guard + token + CSP）。
  *
- * 工具栏（规范 04-web-preview-and-cleanup.md §1.1）：
+ * 工具栏：
  * - 后退 / 前进：同源 /preview 路由可用 iframe.contentWindow.history.back/forward
  * - 刷新：重新挂载 iframe（递增 localReloadKey）
  * - 重启 AppRuntime：POST /api/threads/{thread_id}/runtime/restart
@@ -46,7 +46,7 @@ export function PreviewSurface({
   reloadKey: number;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  // basePath 部署（/nexharness）下，服务端下发的 /preview 裸路径需补前缀（apiPath 幂等，已带前缀则原样返回）
+  // basePath 部署（nexharness）下，服务端下发的 /preview 裸路径需补前缀（apiPath 幂等，已带前缀则原样返回）
   const resolvedPreviewUrl = previewUrl ? apiPath(previewUrl) : null;
   const [localReloadKey, setLocalReloadKey] = useState(0);
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("responsive");

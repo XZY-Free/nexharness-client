@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-4：QaWebContentsFactory 的 Electron 生产实现。
+ * QaWebContentsFactory 的 Electron 生产实现。
  *
  * 创建隐藏 BrowserWindow（show: false）作为 QA WebContents：
  * - 使用临时 session partition（`qa-temp-${threadId}`，非 persist:）

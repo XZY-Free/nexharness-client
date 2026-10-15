@@ -1,14 +1,12 @@
 /**
  * 身份 schema（消费方模型 v4：FK 目标 stub）。
  *
- * 19 张身份/授权表的 DDL 与迁移归 auth-center；本文件只保留 nexharness 侧仍被
- * 外键引用的 2 张 FK 目标定义（不参与本仓迁移生成，见 drizzle.config.ts 的
- * tablesFilter）：
+ * 19 张身份/授权表的 DDL 与迁移归 auth-center；本文件只保留服务端仍被
+ * 外键引用的 2 张 FK 目标定义（不参与本仓迁移生成）：
  * - tenant：租户根，所有业务根对象必须校验 tenant（基线 FK 80 处）。
  * - userIdentity：租户内稳定用户 id（少量只读：绑定终稿复核 / resume 停用检查）。
  *
- * 事实源：docs/architecture/persistence.md 第 2、8 节。
- * （PrincipalBinding 等其余表定义已随第三轮消费化删除——引用面归零。）
+ * （PrincipalBinding 等其余表定义已删除，引用面归零。）
  */
 import { randomUUID } from "node:crypto";
 import { json } from "@/lib/persistence/schema/json-column";

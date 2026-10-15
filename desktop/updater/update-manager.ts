@@ -1,5 +1,5 @@
 /**
- * V10 Phase 8：自动更新管理器。
+ * 自动更新管理器。
  *
  * 包装 electron-updater 的 autoUpdater，实现：
  * - 启动后定时检查更新（每 4 小时）

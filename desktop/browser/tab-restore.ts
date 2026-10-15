@@ -1,5 +1,5 @@
 /**
- * V10 Phase 4：Tab 惰性恢复。
+ * Tab 惰性恢复。
  *
  * Desktop 重启时从 SQLite 读取各 Thread 的 tab 元数据（URL、顺序、activeTabId）。
  * 仅在用户打开 Thread 时惰性恢复，不一次打开所有页面。

@@ -10,10 +10,10 @@ import { useStudioContext } from "@/components/studio/studio-shell";
 import { snapshotAllowsAnyScope } from "@/lib/client/studio-permissions";
 
 /**
- * 统一管理后台 — Runtime 治理页（07 §10/§11）。
+ * 统一管理后台 — Runtime 治理页。
  *
  * 接入 Runtime/RuntimeRevision 发布治理控制面板；
- * Route 操作按 07 §12 优先复用已有 DeploymentRoute/Activation UI，仅提供跳转。
+ * Route 操作优先复用已有 DeploymentRoute/Activation UI，仅提供跳转。
  *
  * 门禁由 StudioShell 承担；canPublish 为快照轻量断言（服务端 RuntimeRevision API 兜底）。
  */

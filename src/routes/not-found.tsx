@@ -4,7 +4,7 @@ import Link from "@/src/shims/next-link";
 import { ArrowLeft, FileQuestion } from "lucide-react";
 
 /**
- * 404 视图（搬迁自 nexharness app/studio/not-found.tsx）。
+ * 404 视图。
  * 同时用于路由 * 兜底与页面内显式 404（如 /chat/:threadId 非 UUID）。
  */
 export function NotFoundView() {

@@ -4,7 +4,7 @@ import Link from "@/src/shims/next-link";
 import { ArrowLeft, RefreshCw, TriangleAlert } from "lucide-react";
 
 /**
- * 路由级错误边界视图（搬迁自 nexharness app/studio/error.tsx）。
+ * 路由级错误边界视图。
  * 由 react-router errorElement 渲染；重试 = 整页 reload。
  */
 export function RouteErrorView() {

@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-4：隐藏 QA WebContents 控制器。
+ * 隐藏 QA WebContents 控制器。
  *
  * 管理 Desktop 端 AI QA 专用的隐藏 WebContents：
  * - 每个 thread 一个独立的隐藏 BrowserWindow（show: false，不可见）
@@ -13,7 +13,7 @@
  * - QaController 管理不可见的 QA 专用 WebContents（hidden BrowserWindow）
  * - QA 不复用用户 tab，不影响用户 URL/滚动/表单/下载
  *
- * CDP 集成（Phase 7-5 扩展）：
+ * CDP 集成：
  * - 复用 PageInsightsStore 缓冲 console/network 事件
  * - 通过 debugger attach Runtime+Network 域捕获事件
  * - evaluate/screenshot 通过 CDP 命令实现
@@ -33,7 +33,7 @@ import {
 } from "./qa-policy";
 
 /**
- * V10 Phase 7-5：QaViewport / QaPage 类型从 `lib/desktop/qa-schema` 统一导入，
+ * QaViewport / QaPage 类型从 `lib/desktop/qa-schema` 统一导入，
  * 与 Web 端 Playwright QA 共用同一形状。re-export 便于桌面内部模块从
  * `desktop/qa/qa-controller` 路径继续导入。
  */

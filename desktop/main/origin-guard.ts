@@ -1,5 +1,5 @@
 /**
- * V10 Phase 3：Electron 主进程 origin 校验守卫（纯函数，可测试）。
+ * Electron 主进程 origin 校验守卫（纯函数，可测试）。
  *
  * 拦截 BrowserWindow 内的外部导航与窗口打开，只允许受信任 Server origin 加载。
  * 防止 renderer 被诱导导航到恶意站点后绕过 sandbox / contextIsolation。

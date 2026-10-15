@@ -1,5 +1,5 @@
 /**
- * CredentialRef API Client — 消费 /admin/api/credential-refs（07 §7）。
+ * CredentialRef API Client — 消费 /admin/api/credential-refs。
  *
  * bearer 模式的 External Runtime 登记只能选择已有 CredentialRef；
  * 禁止 Secret 文本框 / raw secret 传输。

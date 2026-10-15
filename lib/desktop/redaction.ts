@@ -1,8 +1,7 @@
 /**
- * ：Desktop / Server 共享脱敏纯函数。
+ * Desktop / Server 共享脱敏纯函数。
  *
- * 实现 03-agent-bridge-security.md §8 与 02-desktop-browser-architecture.md §7
- * 规定的脱敏与上限规则。先在 Desktop 执行（首次脱敏），Server 再调用同一模块
+ * 脱敏与上限规则：先在 Desktop 执行（首次脱敏），Server 再调用同一模块
  * 执行同等规则（防绕过）。
  *
  * 安全约束：
@@ -17,7 +16,7 @@
 /**
  * 默认字节 / 条目上限。
  *
- * 与 03-agent-bridge-security.md §8 一致。
+ * 与桥接安全规范的口径一致。
  */
 export const DEFAULT_LIMITS = {
   /** snapshot 文本上限 */

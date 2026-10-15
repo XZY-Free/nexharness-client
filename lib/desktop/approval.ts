@@ -1,8 +1,7 @@
 /**
- * ：审批策略模块。
+ * 审批策略模块。
  *
- * 实现 03-agent-bridge-security.md §7 与 02-desktop-browser-architecture.md
- * 规定的风险矩阵与审批决策。Desktop 不盲信 Server —— 必须对过期、不匹配、
+ * 风险矩阵与审批决策：Desktop 不盲信 Server —— 必须对过期、不匹配、
  * 超范围 approval 拒绝执行。RPC 信封中的 approvalId 必须对当前 command + scope 有效。
  *
  * 风险矩阵：
@@ -212,7 +211,7 @@ export function containsSensitiveKeyword(description: string): boolean {
 /**
  * 命令风险分类（基于 command 名 + payload）。
  *
- * 分类规则参见模块顶部注释与 03-agent-bridge-security.md §7 风险矩阵：
+ * 分类规则参见模块顶部注释的风险矩阵：
  * 1. READ_COMMANDS → read
  * 2. navigation 命令（navigate / reload / goBack / goForward / newTab / closeTab / switchTab）→ navigation
  * 3. browser.scroll → read（不修改页面状态）
@@ -222,7 +221,7 @@ export function containsSensitiveKeyword(description: string): boolean {
  * 6. browser.press / browser.select / browser.uploadWorkspaceFile → local_write
  * 7. 未知命令 → external_write（保守需审批，由上层兜底拒绝）
  *
- * @param command 命令名（V10 dotted 格式）
+ * @param command 命令名（dotted 格式）
  * @param payload 命令 payload
  * @returns 风险等级
  */

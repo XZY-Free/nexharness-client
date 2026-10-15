@@ -1,5 +1,5 @@
 /**
- * V10 Phase 7-1：下载记录管理器。
+ * 下载记录管理器。
  *
  * 管理浏览器下载的生命周期：从 Electron Session 的 `will-download` 事件捕获下载项，
  * 跟踪进度，最终流式上传到 Server 的 Thread workspace `downloads/` 目录。

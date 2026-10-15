@@ -5,13 +5,10 @@ import {
 } from "@/components/studio/studio-settings-section";
 
 /**
- * 统一管理后台 — 观测与评测页（S11-W01 占位）。
+ * 统一管理后台 — 观测与评测页（占位）。
  *
  * 一级导航「观测与评测」展示 Event、Trace、Observation、Evaluation、实验和告警。
- * S11-W05/W06 将填充 Trace/Observation 与 Evaluation 内容。
  *
- * 事实源：
- * - docs/architecture/runtime-control-plane.md
  *   「观测与评测」：Event、Trace、Observation、Evaluation、实验和告警
  *
  * 门禁（studio.access）由 StudioShell 统一承担（页面数据 API 化）。

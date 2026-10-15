@@ -1,11 +1,8 @@
 /**
- * 员工端 Environment 接管 Hook（S10-W07）。
+ * 员工端 Environment 接管 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W07：
- *   「页面显示当前 Environment owner、在线状态、租约和接管条件」
- *   「接管前核对未完成 ToolCall/Effect；重复连接不能并发执行同一需要写锁的本地操作」
+ * 「页面显示当前 Environment owner、在线状态、租约和接管条件」
+ * 「接管前核对未完成 ToolCall/Effect；重复连接不能并发执行同一需要写锁的本地操作」
  *
  * 职责：
  * - 调用 POST /api/threads/{thread_id}/environment/takeover 请求接管。

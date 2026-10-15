@@ -1,10 +1,8 @@
 /**
- * 员工端 Environment 状态 Hook（S10-W06）。
+ * 员工端 Environment 状态 Hook。
  *
- * 事实源：
- * - docs/architecture/product-surfaces-and-admin.md
- *   S10-W06：「Desktop 复用共同时间线，在右侧增加文件、页面和内部系统任务操作面板」
- *   「本地 Shell、Git、测试、构建、浏览器和应用操作显示实际执行设备、目录、权限和结果」
+ * 「Desktop 复用共同时间线，在右侧增加文件、页面和内部系统任务操作面板」
+ * 「本地 Shell、Git、测试、构建、浏览器和应用操作显示实际执行设备、目录、权限和结果」
  *
  * 职责：
  * - 加载 Thread 当前 Environment 状态（EnvironmentDefinition + active Lease + ExecutionOwnership + availability）。

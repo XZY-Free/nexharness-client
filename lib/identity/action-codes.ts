@@ -1,10 +1,6 @@
 /**
  * 稳定 Action Code 目录。
  *
- * 事实源：
- * - docs/architecture/persistence.md （稳定管理动作列表）
- * - docs/architecture/security.md （动作目录与资源 Scope）
- *
  * 服务端只依赖 action_code + resource_scope 判断；UI 菜单权限不能代替服务端 action_code。
  * 空 allowlist、未知 action、无法解析 scope 全部拒绝。
  *
@@ -12,7 +8,7 @@
  * 状态码同理）——本文件为 nexharness 侧保留的协议词表；评测算法本体在 auth-center。
  */
 
-/** Resource Scope 类型全集（方案 资源 Scope 列表；协议词表）。 */
+/** Resource Scope 类型全集。 */
 export const RESOURCE_SCOPE_TYPES = [
   "agent",
   "team",
@@ -37,7 +33,7 @@ export const RESOURCE_SCOPE_TYPES = [
   "skill",
   "knowledge_base",
   "knowledge_document",
-  // S12-W05：Workload Token 撤销按 Invocation 维度授权
+  // Workload Token 撤销按 Invocation 维度授权
   "invocation",
 ] as const;
 
@@ -60,7 +56,7 @@ export class ResourceScopeError extends Error {
   }
 }
 
-/** 稳定管理动作目录（方案 + 最低动作集）。 */
+/** 稳定管理动作目录。 */
 export const ACTION_CODES = [
   // Public Agent Contract 登记（agent-registrations 端点）
   "agent.contract.register",
@@ -147,7 +143,7 @@ export function isKnownActionCode(code: string): code is ActionCode {
   return ACTION_CODE_SET.has(code);
 }
 
-/** 每个 action code 允许的 resource scope types（方案 ）。 */
+/** 每个 action code 允许的 resource scope types。 */
 export const ACTION_RESOURCE_TYPES: Record<ActionCode, readonly ResourceScopeType[]> = {
   "agent.contract.register": ["agent"],
   "agent.revision.create": ["agent", "team"],

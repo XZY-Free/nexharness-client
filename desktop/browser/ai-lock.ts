@@ -1,8 +1,5 @@
 /**
- * V10 Phase 6-5：Desktop AI 锁状态机。
- *
- * 实现 02-desktop-browser-architecture.md §6 与 03-agent-bridge-security.md §6
- * 规定的 AI 锁和用户接管流程。
+ * Desktop AI 锁状态机。
  *
  * 安全约束：
  * - Server 是 AI lock lease 的唯一事实源；Desktop 本地锁是 Secondary 强制
@@ -11,7 +8,7 @@
  * - Desktop 不允许 renderer 自行伪造锁释放
  * - 网络断开时 Desktop 不立即认为锁已释放；等待 lease 本地计时过期后进入明确的"需要重连确认"状态
  *
- * Phase 6-5 流程：
+ * 流程：
  * 1. AI 命令到达 → Server acquire lease → Desktop 收到 RPC 携带 runId → Desktop 本地 acquire AI 锁
  * 2. AI 持锁期间 → BrowserController 显示 overlay → 用户输入被阻止
  * 3. AI 完成 / Server release → Desktop 收到 lease_released → Desktop 释放本地锁 → overlay 移除

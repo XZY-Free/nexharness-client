@@ -1,10 +1,10 @@
 /**
- * V10 Phase 6：命令执行器。
+ * 命令执行器。
  *
  * 将 Server 发来的 RPC 命令分发到 BrowserController（通过 BrowserCommandTarget
  * 抽象接口），返回统一的 CommandResult。
  *
- * Phase 6 扩展：
+ * 命令清单：
  * - 读取类：getTabs, getPageMetadata, screenshot, snapshot, getAccessibilityTree,
  *   getConsole, getNetwork
  * - 操作类：navigate, click, doubleClick, type, press, select, scroll,
@@ -43,7 +43,7 @@ export interface BrowserCommandTarget {
   getDebuggerSession?(threadId: string, tabId: string): unknown;
   /** 对指定 tab 截图，返回临时文件路径 */
   captureScreenshot?(threadId: string, tabId: string, format: string): Promise<string>;
-  /** 列出 Thread 的浏览器下载记录（V10 Phase 7-1） */
+  /** 列出 Thread 的浏览器下载记录 */
   listDownloads?(threadId: string): unknown[];
   /** Phase 7-3：获取页面快照（结构化 DOM 摘要 + 可见文本） */
   getSnapshot?(
