@@ -7,8 +7,6 @@ desktop/package-app/
 desktop/dist/
 desktop/release/
 /release/
-desktop/dist/
-desktop/downloads/
 desktop/storage/*.db
 desktop/storage/*.db-*
 
