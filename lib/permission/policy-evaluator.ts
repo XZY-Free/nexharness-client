@@ -1,4 +1,3 @@
-import type { PermissionDecisionValue } from "@/lib/persistence/schema/permission";
 /**
  * Formal Policy Evaluator。
  *
@@ -21,6 +20,7 @@ import type { PermissionDecisionValue } from "@/lib/persistence/schema/permissio
  * lib/permission/engine.ts（02-6 P9 物理删除）。正则 ReDoS 防护复用 lib/security/regex-safety。
  */
 import { isReDoSRisky } from "@/lib/security/regex-safety";
+import type { PermissionDecisionValue } from "@/lib/server-schema/permission";
 
 // ─── 决策强度 ─────────────────────────────────────────────
 /** 决策强度排序：block > pause > allow（schema Policy.priority 注释）。 */

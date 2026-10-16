@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { AuditActionType } from "@/lib/persistence/schema/audit";
+import type { AuditActionType } from "@/lib/server-schema/audit";
 import type { StudioAuditRow } from "@/lib/studio/admin-audit";
 import { CheckCircle2, CircleMinus, CircleX, ScrollText } from "lucide-react";
 

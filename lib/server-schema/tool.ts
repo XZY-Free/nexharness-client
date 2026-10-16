@@ -22,8 +22,8 @@
  * - CredentialRef 不存密文，只保存 Vault 引用 + 指纹（用于脱敏比对）。
  */
 import { randomUUID } from "node:crypto";
-import { tenant } from "@/lib/persistence/schema/identity";
-import { json } from "@/lib/persistence/schema/json-column";
+import { tenant } from "@/lib/server-schema/identity";
+import { json } from "@/lib/server-schema/json-column";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   bigint,

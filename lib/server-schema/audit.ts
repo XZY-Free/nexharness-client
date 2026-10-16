@@ -7,8 +7,8 @@
  * - Audit 只追加，不允许普通应用账号 UPDATE/DELETE；依法清理走后续数据生命周期流程。
  */
 import { randomUUID } from "node:crypto";
-import { tenant } from "@/lib/persistence/schema/identity";
-import { json } from "@/lib/persistence/schema/json-column";
+import { tenant } from "@/lib/server-schema/identity";
+import { json } from "@/lib/server-schema/json-column";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { datetime, index, mysqlEnum, mysqlTable, text, varchar } from "drizzle-orm/mysql-core";
 

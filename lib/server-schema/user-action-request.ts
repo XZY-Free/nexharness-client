@@ -12,8 +12,8 @@
  * - resolve 与 resume command 同事务写入（在仓储层 createUserActionRequest 时关联）。
  */
 import { randomUUID } from "node:crypto";
-import { tenant } from "@/lib/persistence/schema/identity";
-import { json } from "@/lib/persistence/schema/json-column";
+import { tenant } from "@/lib/server-schema/identity";
+import { json } from "@/lib/server-schema/json-column";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   bigint,

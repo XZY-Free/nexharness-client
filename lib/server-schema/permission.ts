@@ -12,9 +12,9 @@
  * admin_override）。
  */
 import { randomUUID } from "node:crypto";
-import { tenant } from "@/lib/persistence/schema/identity";
-import { json } from "@/lib/persistence/schema/json-column";
-import { credentialRefTable } from "@/lib/persistence/schema/tool";
+import { tenant } from "@/lib/server-schema/identity";
+import { json } from "@/lib/server-schema/json-column";
+import { credentialRefTable } from "@/lib/server-schema/tool";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   bigint,

@@ -9,7 +9,7 @@
  * （PrincipalBinding 等其余表定义已删除，引用面归零。）
  */
 import { randomUUID } from "node:crypto";
-import { json } from "@/lib/persistence/schema/json-column";
+import { json } from "@/lib/server-schema/json-column";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import {

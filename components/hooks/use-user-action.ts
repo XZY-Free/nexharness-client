@@ -34,7 +34,7 @@ import type {
   ClientUserActionResolveResponse,
   ClientVisibleError,
 } from "@/lib/client/types";
-import type { UserActionResolution } from "@/lib/persistence/schema/user-action-request";
+import type { UserActionResolution } from "@/lib/server-schema/user-action-request";
 import { useCallback, useRef, useState } from "react";
 
 /** Hook 入参。 */
