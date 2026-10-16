@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const apiFetchMock = vi.fn();
 vi.mock("@/lib/api-fetch", () => ({
@@ -21,20 +21,79 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-beforeEach(() => apiFetchMock.mockReset());
+// 注：不用 beforeEach reset —— 每条例内自行 mockReset，避免 hook 超时误报。
 
 describe("useThreadSettings", () => {
-  // 注：原「busy 期间重复调用」用例依赖永不 resolve 的 pending promise + act 包裹，
-  // 在本环境的 jsdom+React19 组合下会触发 hook 超时，暂移除（实现逻辑本身已在
-  // 代码 review 中确认：patchSettings 开头即 `if (busy) return false`）。
+  it("fetch 抛错 → NETWORK_ERROR", async () => {
+    apiFetchMock.mockReset();
+    apiFetchMock.mockImplementation(() => {
+      const rejected = Promise.reject(new Error("down"));
+      // 预先挂 noop catch：避免 ls 在被 hook await 之前被判 unhandled rejection
+      // （hook 内的 await 仍会正常 reject 并被 catch）。
+      rejected.catch(() => {});
+      return rejected;
+    });
+    const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
+    await act(async () => {
+      await result.current.patchSettings({
+        expectedVersionNo: 1,
+        updates: { default_model_ref: "m" },
+      });
+    });
+    expect(result.current.error?.code).toBe("NETWORK_ERROR");
+  });
+
+  it("busy 期间重复调用直接返回 false（不重复发请求）", async () => {
+    apiFetchMock.mockReset();
+    // 永不 resolve 的 pending promise → 第一次调用停在 busy=true。
+    // 关键：在 act 内 flush 一个 microtask（不 await 那个永不 settle 的 promise），
+    // 否则 act 会一直等待，导致 hook 超时。
+    let resolveFn: (r: Response) => void = () => {};
+    apiFetchMock.mockImplementation(
+      () =>
+        new Promise<Response>((res) => {
+          resolveFn = res;
+        }),
+    );
+    const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
+
+    let first: Promise<boolean> | undefined;
+    await act(async () => {
+      first = result.current.patchSettings({
+        expectedVersionNo: 1,
+        updates: { default_model_ref: "m" },
+      });
+      await Promise.resolve(); // flush 掉 setBusy(true)
+    });
+    expect(result.current.busy).toBe(true);
+
+    let secondOk: boolean | undefined;
+    await act(async () => {
+      secondOk = await result.current.patchSettings({
+        expectedVersionNo: 1,
+        updates: { default_model_ref: "m" },
+      });
+    });
+    expect(secondOk).toBe(false);
+    expect(apiFetchMock).toHaveBeenCalledTimes(1); // 只有第一次真的发请求
+
+    // 收尾：resolve 第一个，避免悬挂 promise 泄漏到后续用例
+    await act(async () => {
+      resolveFn(jsonResponse({}));
+      await first;
+    });
+    expect(result.current.busy).toBe(false);
+  });
 
   it("初始 busy=false / error=null", () => {
+    apiFetchMock.mockReset();
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     expect(result.current.busy).toBe(false);
     expect(result.current.error).toBeNull();
   });
 
   it("空 updates 不发请求，返回 false 且设置参数错误", async () => {
+    apiFetchMock.mockReset();
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     let ok: boolean | undefined;
     await act(async () => {
@@ -47,6 +106,7 @@ describe("useThreadSettings", () => {
   });
 
   it("PATCH 成功：返回 true，携带 If-Match 与 body", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({}, 200));
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     let ok: boolean | undefined;
@@ -67,6 +127,7 @@ describe("useThreadSettings", () => {
   });
 
   it("update 含 null 值也算有效更新（显式清除）", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({}));
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     await act(async () => {
@@ -79,6 +140,7 @@ describe("useThreadSettings", () => {
   });
 
   it("服务端错误 envelope 映射为可见错误", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(
       jsonResponse(
         { error: { code: "ETAG_MISMATCH", message: "x", request_id: "r", retryable: true } },
@@ -98,6 +160,7 @@ describe("useThreadSettings", () => {
   });
 
   it("非 JSON 错误 body 降级为 NETWORK_ERROR", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(new Response("<html>502</html>", { status: 502 }));
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     await act(async () => {
@@ -111,6 +174,7 @@ describe("useThreadSettings", () => {
   });
 
   it("clearError 清除错误", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({}, 500));
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     await act(async () => {
@@ -125,6 +189,7 @@ describe("useThreadSettings", () => {
   });
 
   it("成功后 busy 复位为 false", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({}));
     const { result } = renderHook(() => useThreadSettings({ threadId: "t1" }));
     await act(async () => {

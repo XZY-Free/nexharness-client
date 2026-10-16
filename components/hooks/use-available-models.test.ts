@@ -21,13 +21,13 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-beforeEach(() => {
-  apiFetchMock.mockReset();
-});
+// 注：不用 beforeEach mockReset —— 会在 hook 挂载期重置 pending mock 导致超时，
+// 改为每条例内自行 mockReset。
 afterEach(() => vi.clearAllMocks());
 
 describe("useAvailableModels", () => {
   it("初始为 loading", () => {
+    apiFetchMock.mockReset();
     // 挂起不 resolve：断言初始态
     apiFetchMock.mockImplementation(() => new Promise<Response>(() => {}));
     const { result } = renderHook(() => useAvailableModels());
@@ -36,6 +36,7 @@ describe("useAvailableModels", () => {
   });
 
   it("成功加载后填充 models / defaultModel 并结束 loading", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(
       jsonResponse({ models: [{ id: "m1" }, { id: "m2" }], defaultModel: "m1" }),
     );
@@ -47,6 +48,7 @@ describe("useAvailableModels", () => {
   });
 
   it("过滤掉 id 非字符串的非法项（防畸形数据进下拉）", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(
       jsonResponse({ models: [{ id: "ok" }, { id: 123 }, { noId: true }, null] }),
     );
@@ -56,6 +58,7 @@ describe("useAvailableModels", () => {
   });
 
   it("models 缺失时为空数组；defaultModel 非字符串时为 null", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({ defaultModel: 42 }));
     const { result } = renderHook(() => useAvailableModels());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -64,6 +67,7 @@ describe("useAvailableModels", () => {
   });
 
   it("HTTP 非 2xx → 错误态（models 空）", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({}, 500));
     const { result } = renderHook(() => useAvailableModels());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -72,6 +76,7 @@ describe("useAvailableModels", () => {
   });
 
   it("网络异常 → 错误态", async () => {
+    apiFetchMock.mockReset();
     // 用 mockImplementation 抛错（hook 内部 catch），避免 mockRejectedValue 的 unhandled rejection
     apiFetchMock.mockImplementation(async () => {
       throw new Error("network down");
@@ -82,6 +87,7 @@ describe("useAvailableModels", () => {
   });
 
   it("请求携带 AbortSignal（卸载时可中止）", async () => {
+    apiFetchMock.mockReset();
     apiFetchMock.mockResolvedValue(jsonResponse({ models: [] }));
     const { unmount } = renderHook(() => useAvailableModels());
     await waitFor(() => expect(apiFetchMock).toHaveBeenCalled());
@@ -91,6 +97,7 @@ describe("useAvailableModels", () => {
   });
 
   it("卸载后到达的响应不更新状态（防 setState on unmounted）", async () => {
+    apiFetchMock.mockReset();
     let resolveFn: (r: Response) => void = () => {};
     apiFetchMock.mockReturnValue(
       new Promise<Response>((res) => {
