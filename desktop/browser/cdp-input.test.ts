@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { mapConsoleType, toCdpKeyCode } from "./cdp-input";
+import {
+  extractDocumentRootId,
+  extractQueryNodeId,
+  mapConsoleType,
+  toCdpKeyCode,
+} from "./cdp-input";
 
 describe("toCdpKeyCode", () => {
   it("映射常见特殊键", () => {
@@ -44,5 +49,44 @@ describe("mapConsoleType", () => {
     expect(mapConsoleType("verbose")).toBe("log");
     expect(mapConsoleType("nonsense")).toBe("log");
     expect(mapConsoleType(undefined)).toBe("log");
+  });
+});
+
+describe("extractDocumentRootId — fail-closed", () => {
+  it("ok + 有效 root.nodeId → 返回该 id", () => {
+    expect(extractDocumentRootId({ ok: true, result: { root: { nodeId: 42 } } })).toBe(42);
+  });
+
+  it("ok=false / 无 result / 无 root → null", () => {
+    expect(extractDocumentRootId({ ok: false, result: { root: { nodeId: 1 } } })).toBeNull();
+    expect(extractDocumentRootId({ ok: true })).toBeNull();
+    expect(extractDocumentRootId({ ok: true, result: {} })).toBeNull();
+    expect(extractDocumentRootId({ ok: true, result: { root: {} } })).toBeNull();
+  });
+
+  it("nodeId=0（CDP 约定的无效值）→ null", () => {
+    expect(extractDocumentRootId({ ok: true, result: { root: { nodeId: 0 } } })).toBeNull();
+  });
+
+  it("nodeId 非数字 → null（不猜测转换）", () => {
+    expect(extractDocumentRootId({ ok: true, result: { root: { nodeId: "42" } } })).toBeNull();
+    expect(extractDocumentRootId({ ok: true, result: { root: { nodeId: null } } })).toBeNull();
+  });
+});
+
+describe("extractQueryNodeId — fail-closed", () => {
+  it("ok + 有效 nodeId → 返回", () => {
+    expect(extractQueryNodeId({ ok: true, result: { nodeId: 7 } })).toBe(7);
+  });
+
+  it("nodeId=0（未匹配）→ null（必须当失败）", () => {
+    expect(extractQueryNodeId({ ok: true, result: { nodeId: 0 } })).toBeNull();
+  });
+
+  it("ok=false / 无 result / nodeId 缺失或非数字 → null", () => {
+    expect(extractQueryNodeId({ ok: false, result: { nodeId: 7 } })).toBeNull();
+    expect(extractQueryNodeId({ ok: true })).toBeNull();
+    expect(extractQueryNodeId({ ok: true, result: {} })).toBeNull();
+    expect(extractQueryNodeId({ ok: true, result: { nodeId: "7" } })).toBeNull();
   });
 });

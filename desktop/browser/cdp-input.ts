@@ -78,3 +78,38 @@ export function mapConsoleType(type: string | undefined): "error" | "warning" | 
       return "log";
   }
 }
+
+// ─── CDP DOM 节点解析（file input 上传用）────────────────────────────
+
+/** CDP sendCommand 的最小结果形状。 */
+export interface CdpCommandResult {
+  readonly ok: boolean;
+  readonly result?: unknown;
+}
+
+/**
+ * 从 `DOM.getDocument` 结果中提取 document rootId。
+ *
+ * fail-closed：ok=false / result 缺失 / root 缺失 / nodeId 为 0（CDP 约定 0 表示无效）
+ * 一律返回 null，调用方据此放弃操作（**不猜测**、不重试）。
+ */
+export function extractDocumentRootId(result: CdpCommandResult): number | null {
+  if (!result.ok || !result.result) return null;
+  const root = (result.result as { root?: { nodeId?: unknown } }).root;
+  const nodeId = root?.nodeId;
+  if (typeof nodeId !== "number" || nodeId === 0) return null;
+  return nodeId;
+}
+
+/**
+ * 从 `DOM.querySelector` 结果中提取匹配节点 nodeId。
+ *
+ * fail-closed：ok=false / result 缺失 / nodeId 缺失或为 0 → null。
+ * nodeId=0 是 CDP「未找到匹配」的约定，必须当作失败而非有效节点。
+ */
+export function extractQueryNodeId(result: CdpCommandResult): number | null {
+  if (!result.ok || !result.result) return null;
+  const nodeId = (result.result as { nodeId?: unknown }).nodeId;
+  if (typeof nodeId !== "number" || nodeId === 0) return null;
+  return nodeId;
+}

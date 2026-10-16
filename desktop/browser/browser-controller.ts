@@ -28,11 +28,16 @@ import { type UploadConfig, uploadFileToWorkspace } from "../downloads/download-
 import type { QaController } from "../qa/qa-controller";
 import { boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
 import type { Bounds, WindowConstraints } from "./bounds-validator";
-import { toCdpKeyCode } from "./cdp-input";
+import { extractDocumentRootId, extractQueryNodeId, toCdpKeyCode } from "./cdp-input";
 import { normalizeCdpEvent } from "./cdp-insights";
 import { DebuggerSessionScheduler } from "./debugger-session-scheduler";
 import type { DebuggerSessionTarget } from "./debugger-session-scheduler";
 import { WebContentsDebuggerTarget } from "./debugger-target";
+import {
+  type DownloadCoordinatorDeps,
+  type DownloadManagerLike,
+  handleWillDownload,
+} from "./download-coordinator";
 import { normalizeUrl, validateNavAction } from "./nav-actions";
 import type { BrowserNavAction } from "./nav-actions";
 import { PageInsightsStore } from "./page-insights-store";
@@ -45,7 +50,7 @@ import {
 } from "./permission-policy";
 import type { PermissionType } from "./permission-policy";
 import { SessionManager } from "./session-manager";
-import { decideCloseTab, decideUploadOutcome } from "./tab-lifecycle";
+import { decideCloseTab } from "./tab-lifecycle";
 import type { TabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
@@ -659,20 +664,16 @@ export class BrowserController {
       return false;
     }
     try {
-      // 获取 document root
-      const docResult = await target.sendCommand("DOM.getDocument", { depth: 0 });
-      if (!docResult.ok || !docResult.result) return false;
-      const root = (docResult.result as { root?: { nodeId?: number } }).root;
-      const rootId = root?.nodeId;
-      if (rootId === undefined || rootId === 0) return false;
-      // 查询目标元素
-      const queryResult = await target.sendCommand("DOM.querySelector", {
-        nodeId: rootId,
-        selector,
-      });
-      if (!queryResult.ok || !queryResult.result) return false;
-      const nodeId = (queryResult.result as { nodeId?: number }).nodeId;
-      if (nodeId === undefined || nodeId === 0) return false;
+      // 获取 document root（解析规则见 cdp-input#extractDocumentRootId，fail-closed）
+      const rootId = extractDocumentRootId(
+        await target.sendCommand("DOM.getDocument", { depth: 0 }),
+      );
+      if (rootId === null) return false;
+      // 查询目标元素（nodeId=0 表示未匹配，必须当失败）
+      const nodeId = extractQueryNodeId(
+        await target.sendCommand("DOM.querySelector", { nodeId: rootId, selector }),
+      );
+      if (nodeId === null) return false;
       // 设置文件（使用临时文件路径）
       const setResult = await target.sendCommand("DOM.setFileInputFiles", {
         nodeId,
@@ -1241,105 +1242,22 @@ export class BrowserController {
 
     session.on("will-download", (_event, item, webContents) => {
       if (!this.downloadManager) return;
-
-      // 从 webContents 反查 (threadId, tabId)
-      const idx = this.webContentsIndex.get(webContents.id);
-      if (!idx) return; // 未知 webContents，忽略
-
-      const { threadId, tabId } = idx;
-      const fileName = item.getFilename();
-      const urlChain = item.getURLChain();
-      const url = (urlChain && urlChain.length > 0 ? urlChain[0] : "") ?? "";
-      const mimeType = item.getMimeType();
-      const totalBytes = item.getTotalBytes();
-
-      const record = this.downloadManager.createDownload({
-        threadId,
-        tabId,
-        fileName,
-        url,
-        mimeType,
-        totalBytes,
-      });
-
-      // 进度更新
-      item.on("updated", (_e, state) => {
-        if (state === "progressing") {
-          this.downloadManager?.updateProgress(record.id, item.getReceivedBytes());
-        }
-      });
-
-      // 下载完成 / 取消 / 失败
-      item.on("done", (_e, state) => {
-        if (state === "completed") {
-          const savedPath = item.getSavePath();
-          this.downloadManager?.completeDownload(record.id, savedPath);
-          // Phase 7-6：注册到 registry 以便上传成功后或 closeThread 时清理
-          this.tempFileRegistry.register(threadId, savedPath, "download");
-          // 触发流式上传（fire-and-forget，失败仅记录不抛出）
-          if (this.downloadUploadConfig) {
-            void this.uploadDownload(record.id, threadId, savedPath, fileName);
-          }
-        } else if (state === "cancelled") {
-          this.downloadManager?.cancelDownload(record.id);
-          // Phase 7-6：cancel 时 Electron 可能已写入部分文件——主动 unlink 避免孤儿
-          void this.cleanupCancelledDownload(item.getSavePath());
-        } else {
-          this.downloadManager?.failDownload(record.id, `下载${state}`);
-          // Phase 7-6：interrupted 状态同样主动清理部分写入的文件
-          void this.cleanupCancelledDownload(item.getSavePath());
-        }
-      });
+      // 下载生命周期（记录/进度/终态/上传/清理）委托给 DownloadCoordinator。
+      // 依赖注入使协调器可用 fake 依赖单测（Electron 对象无法在 vitest 实例化）。
+      handleWillDownload(this.downloadDeps(), item, webContents.id);
     });
   }
 
-  /**
-   * Phase 7-1：流式上传本机下载文件到 Server workspace。
-   *
-   * 调用 uploadFileToWorkspace，根据结果更新 DownloadManager 状态：
-   * - 成功：completeUpload → 状态 uploaded
-   * - 失败：failUpload → 状态 upload_failed（不伪装 uploaded）
-   *
-   * Phase 7-6：成功 / 失败两种结果都会清理本地临时文件——
-   * 上传失败时若保留本地文件，用户也无法重新触发上传（fire-and-forget），
-   * 只会堆积成孤儿文件。失败状态已记录在 DownloadManager 供 UI 反馈。
-   */
-  private async uploadDownload(
-    downloadId: string,
-    threadId: ThreadId,
-    filePath: string,
-    fileName: string,
-  ): Promise<void> {
-    if (!this.downloadManager || !this.downloadUploadConfig) return;
-    this.downloadManager.startUpload(downloadId);
-
-    const result = await uploadFileToWorkspace({
-      config: this.downloadUploadConfig,
-      threadId,
-      filePath,
-      fileName,
-    });
-
-    const outcome = decideUploadOutcome(result);
-    if (outcome.state === "uploaded") {
-      this.downloadManager.completeUpload(downloadId, outcome.workspacePath);
-    } else {
-      this.downloadManager.failUpload(downloadId, outcome.error);
-    }
-    // Phase 7-6：无论成功或失败都清理本地文件——
-    // 成功：文件已上传到 workspace，本机副本无价值
-    // 失败：fire-and-forget 不重试，保留只会成为孤儿
-    await this.cleanupTempFileAfterUpload(filePath);
-  }
-
-  /**
-   * Phase 7-6：清理 cancelled / interrupted 下载残留的部分写入文件。
-   *
-   * Electron 在 cancelled / interrupted 时可能已写入部分文件到 savePath，
-   * 不主动清理会留下孤儿。safeUnlink 幂等——文件不存在也返回 true。
-   */
-  private async cleanupCancelledDownload(savePath: string): Promise<boolean> {
-    // 此 path 可能从未注册（cancel 在 register 之前发生），unregister 返回 undefined 也无妨
-    return this.cleanupTempFileAfterUpload(savePath);
+  /** 组装下载协调器依赖（把 this 的能力映射为协调器所需的最小接口）。 */
+  private downloadDeps(): DownloadCoordinatorDeps {
+    return {
+      downloadManager: this.downloadManager as DownloadManagerLike,
+      getUploadConfig: () => this.downloadUploadConfig,
+      resolveTab: (webContentsId) => this.webContentsIndex.get(webContentsId) ?? null,
+      registerTempFile: (threadId, path, kind) =>
+        this.tempFileRegistry.register(threadId, path, kind),
+      uploadFile: (params) => uploadFileToWorkspace(params),
+      cleanupFile: (path) => this.cleanupTempFileAfterUpload(path),
+    };
   }
 }
