@@ -19,6 +19,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["{src,components,lib,desktop}/**/*.{test,spec}.{ts,tsx}"],
+    // React hooks 测试需要 DOM：在文件顶部加 `// @vitest-environment jsdom` 单文件切换
+    // （不打全局 jsdom，避免拖慢纯逻辑用例）。
     exclude: [
       "node_modules/**",
       "dist/**",

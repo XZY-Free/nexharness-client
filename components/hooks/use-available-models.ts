@@ -38,7 +38,10 @@ export function useAvailableModels(): AvailableModelsState {
           defaultModel?: unknown;
         };
         const models = (body.models ?? [])
-          .filter((model): model is { id: string } => typeof model.id === "string")
+          .filter(
+            (model): model is { id: string } =>
+              typeof model === "object" && model !== null && typeof model.id === "string",
+          )
           .map((model) => ({ id: model.id }));
         const defaultModel = typeof body.defaultModel === "string" ? body.defaultModel : null;
 
