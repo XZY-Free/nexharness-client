@@ -28,7 +28,8 @@ import { type UploadConfig, uploadFileToWorkspace } from "../downloads/download-
 import type { QaController } from "../qa/qa-controller";
 import { boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
 import type { Bounds, WindowConstraints } from "./bounds-validator";
-import { mapConsoleType, toCdpKeyCode } from "./cdp-input";
+import { toCdpKeyCode } from "./cdp-input";
+import { normalizeCdpEvent } from "./cdp-insights";
 import { DebuggerSessionScheduler } from "./debugger-session-scheduler";
 import type { DebuggerSessionTarget } from "./debugger-session-scheduler";
 import { WebContentsDebuggerTarget } from "./debugger-target";
@@ -870,94 +871,28 @@ export class BrowserController {
    * 仅在 debugger attached 时触发（handler 始终注册但 dormant）。
    */
   private handleCdpEvent(threadId: ThreadId, tabId: TabId, method: string, params: unknown): void {
-    const p = (params ?? {}) as Record<string, unknown>;
+    const insight = normalizeCdpEvent(method, params);
+    if (insight.type === "ignore") return;
 
-    switch (method) {
-      case "Runtime.consoleAPICalled": {
-        // params: { type: 'log|warning|error|info', args: [{type, value}], stackTrace: {callFrames: [...]} }
-        const type = p.type as string | undefined;
-        const args = (p.args as Array<{ value?: string; description?: string }>) ?? [];
-        const text = args.map((a) => a.value ?? a.description ?? "").join(" ");
-        const stackTrace = p.stackTrace as
-          | { callFrames?: Array<{ url?: string; lineNumber?: number }> }
-          | undefined;
-        const frame = stackTrace?.callFrames?.[0];
-        this.pageInsightsStore.addConsoleEntry(threadId, tabId, {
-          level: mapConsoleType(type),
-          text,
-          url: frame?.url,
-          lineNumber: frame?.lineNumber,
-        });
+    if (insight.type === "console") {
+      this.pageInsightsStore.addConsoleEntry(threadId, tabId, insight.insight.entry);
+      return;
+    }
+
+    const net = insight.insight;
+    switch (net.kind) {
+      case "request":
+        this.pageInsightsStore.bufferNetworkRequest(threadId, tabId, net.requestId, net.params);
         break;
-      }
-      case "Runtime.exceptionThrown": {
-        // params: { exceptionDetails: { exception: { description }, text, ... } }
-        const details = (p.exceptionDetails ?? {}) as {
-          exception?: { description?: string };
-          text?: string;
-          url?: string;
-          lineNumber?: number;
-        };
-        this.pageInsightsStore.addConsoleEntry(threadId, tabId, {
-          level: "pageerror",
-          text: details.exception?.description ?? details.text ?? "Uncaught exception",
-          url: details.url,
-          lineNumber: details.lineNumber,
-        });
+      case "response":
+        this.pageInsightsStore.bufferNetworkResponse(threadId, tabId, net.requestId, net.params);
         break;
-      }
-      case "Network.requestWillBeSent": {
-        const request = (p.request ?? {}) as {
-          url?: string;
-          method?: string;
-          headers?: Record<string, string>;
-        };
-        const requestId = p.requestId as string | undefined;
-        if (!requestId) break;
-        this.pageInsightsStore.bufferNetworkRequest(threadId, tabId, requestId, {
-          url: request.url ?? "",
-          method: request.method ?? "GET",
-          headers: request.headers,
-          timestamp: (p.timestamp as number) ?? Date.now() / 1000,
-        });
+      case "finished":
+        this.pageInsightsStore.finalizeNetworkEntry(threadId, tabId, net.requestId, net.params);
         break;
-      }
-      case "Network.responseReceived": {
-        const requestId = p.requestId as string | undefined;
-        if (!requestId) break;
-        const response = (p.response ?? {}) as {
-          status?: number;
-          statusText?: string;
-          mimeType?: string;
-          headers?: Record<string, string>;
-        };
-        this.pageInsightsStore.bufferNetworkResponse(threadId, tabId, requestId, {
-          status: response.status ?? 0,
-          statusText: response.statusText,
-          mimeType: response.mimeType,
-          headers: response.headers,
-        });
+      case "failed":
+        this.pageInsightsStore.failNetworkEntry(threadId, tabId, net.requestId, net.params);
         break;
-      }
-      case "Network.loadingFinished": {
-        const requestId = p.requestId as string | undefined;
-        if (!requestId) break;
-        this.pageInsightsStore.finalizeNetworkEntry(threadId, tabId, requestId, {
-          timestamp: (p.timestamp as number) ?? Date.now() / 1000,
-          encodedDataLength: p.encodedDataLength as number | undefined,
-        });
-        break;
-      }
-      case "Network.loadingFailed": {
-        const requestId = p.requestId as string | undefined;
-        if (!requestId) break;
-        this.pageInsightsStore.failNetworkEntry(threadId, tabId, requestId, {
-          timestamp: (p.timestamp as number) ?? Date.now() / 1000,
-          errorText: p.errorText as string | undefined,
-          blockedReason: p.blockedReason as string | undefined,
-        });
-        break;
-      }
     }
   }
 

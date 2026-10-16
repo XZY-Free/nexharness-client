@@ -131,6 +131,17 @@ export function normalizeUrl(input: string): string | null {
     return isValidNavUrl(trimmed) ? trimmed : null;
   }
 
+  // 含明确协议标识（"scheme://"）但不是 http/https 的输入一律拒绝，
+  // 不可当作域名补全（否则 "file:///x" 会被拼成 "https://file:///x"）。
+  // 注意："example.com:8080" 是 host:port（scheme 后无 //），不应误判。
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+    return null;
+  }
+  // 已知危险协议（无 // 前缀形式，如 javascript:alert(1)、data:text/html,x）
+  if (/^(?:javascript|data|blob|file|vbscript):/i.test(trimmed)) {
+    return null;
+  }
+
   // 无协议，补全 https://
   const withProtocol = `https://${trimmed}`;
   return isValidNavUrl(withProtocol) ? withProtocol : null;
