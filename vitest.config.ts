@@ -28,5 +28,17 @@ export default defineConfig({
       "release/**",
       "e2e/**",
     ],
+    /**
+     * 限制 worker 数（原本为 CPU 核数）。
+     *
+     * 实测：不限并发时，jsdom 环境的 hooks 测试（components/hooks/*.test.ts）会在
+     * worker 竞争下**环境初始化失败并被静默跳过** —— 全量跑稳定少收集 4 个文件
+     * （47/822 而非 51/856），退出码仍为 0（假绿）。
+     *
+     * 限制到 2 后 51/856 稳定全收集。当前 51 个文件的规模下，并发收益远小于
+     * "漏测却不报错"的代价。（`pnpm test` 已内置收集校验，本项是根治。）
+     */
+    maxWorkers: 2,
+    minWorkers: 1,
   },
 });
