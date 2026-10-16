@@ -15,37 +15,83 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { type Highlighter, getSingletonHighlighter } from "shiki";
+import { type HighlighterCore, createHighlighterCore } from "shiki/core";
+import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import { Icon } from "./icons";
 
-/** 预加载的常用语言（覆盖 AI 写代码的主要场景）。未预加载的语言 highlighter 会按需加载。 */
-const PRELOAD_LANGS = [
-  "javascript",
-  "typescript",
-  "jsx",
-  "tsx",
-  "python",
-  "sql",
-  "bash",
-  "json",
-  "html",
-  "css",
-  "yaml",
-  "markdown",
-] as const;
+/**
+ * 预加载语言（**显式注册**，不引入全量 grammar）。
+ *
+ * 此前用 `getSingletonHighlighter`（shiki 主入口）会把**全部**语言 grammar 拉进构建图，
+ * 产出 309 chunk / 12MB（含 emacs-lisp 772K、cpp 768K、wolfram 260K 等冷门语言）。
+ * 现改为 createHighlighterCore + 逐语言动态 import：只有下列语言的 chunk 会被产出。
+ *
+ * 未列出的语言 → 不传 lang 给 codeToHtml → 纯文本 fallback（与原「未预加载按需加载」
+ * 相比，代价是不再自动支持长尾语言；如需扩展，在此对象补一项即可）。
+ */
+const LANG_IMPORTS = {
+  javascript: () => import("shiki/langs/javascript.mjs"),
+  typescript: () => import("shiki/langs/typescript.mjs"),
+  jsx: () => import("shiki/langs/jsx.mjs"),
+  tsx: () => import("shiki/langs/tsx.mjs"),
+  python: () => import("shiki/langs/python.mjs"),
+  sql: () => import("shiki/langs/sql.mjs"),
+  bash: () => import("shiki/langs/bash.mjs"),
+  json: () => import("shiki/langs/json.mjs"),
+  html: () => import("shiki/langs/html.mjs"),
+  css: () => import("shiki/langs/css.mjs"),
+  yaml: () => import("shiki/langs/yaml.mjs"),
+  markdown: () => import("shiki/langs/markdown.mjs"),
+} as const;
+
+type PreloadLang = keyof typeof LANG_IMPORTS;
+
+const PRELOAD_LANGS = Object.keys(LANG_IMPORTS) as PreloadLang[];
+
+/**
+ * 语言别名（markdown 里常见的写法差异）→ shiki 原生 langAlias。
+ * 命中别名即视为已注册语言；未命中且不在预置集内 → fallback 纯文本。
+ */
+const LANG_ALIAS: Record<string, string> = {
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  ts: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  py: "python",
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  yml: "yaml",
+  md: "markdown",
+};
+
 const THEME = "github-dark";
 
-let highlighterPromise: Promise<Highlighter> | null = null;
+let highlighterPromise: Promise<HighlighterCore> | null = null;
 
 /** 模块级单例 highlighter：首次调用加载预置语言 + 主题，后续共享。 */
-function getHighlighter(): Promise<Highlighter> {
+function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
-    highlighterPromise = getSingletonHighlighter({
-      themes: [THEME],
-      langs: [...PRELOAD_LANGS],
+    highlighterPromise = createHighlighterCore({
+      themes: [import("shiki/themes/github-dark.mjs")],
+      // 并行加载所有预置语言
+      langs: PRELOAD_LANGS.map((lang) => LANG_IMPORTS[lang]()),
+      langAlias: LANG_ALIAS,
+      engine: createOnigurumaEngine(import("shiki/wasm")),
     });
   }
   return highlighterPromise;
+}
+
+/** 把 markdown 里写的语言名归一为已注册语言；不在预置集内返回 null（走 fallback）。 */
+function normalizeLang(raw: string | null): PreloadLang | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  // 别名先归一（js→javascript 等），再确认是否在预置集内
+  const canonical = LANG_ALIAS[lower] ?? lower;
+  return canonical in LANG_IMPORTS ? (canonical as PreloadLang) : null;
 }
 
 /** 从 code 元素 className 提取语言（react-markdown 给的 language-xxx）。 */
@@ -87,19 +133,17 @@ export function CodeBlock({
     requestedRef.current = { codeText, lang };
 
     let cancelled = false;
+    // 语言归一：不在预置集内 → null（走纯文本 fallback，不再触发全量 grammar 加载）
+    const resolvedLang = normalizeLang(lang);
     getHighlighter()
       .then((hl) => {
         if (cancelled) return;
-        // lang 未预加载时 getSingletonHighlighter 内部按需加载；try 防未知语言抛错
         try {
           setHtml(
-            hl.codeToHtml(codeText, {
-              lang: lang ?? "text",
-              theme: THEME,
-            }),
+            resolvedLang ? hl.codeToHtml(codeText, { lang: resolvedLang, theme: THEME }) : null,
           );
         } catch {
-          setHtml(null); // 未知语言 → fallback 纯文本
+          setHtml(null); // 高亮失败 → fallback 纯文本
         }
       })
       .catch(() => {
