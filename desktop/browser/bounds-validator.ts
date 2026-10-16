@@ -138,3 +138,35 @@ export function boundsChanged(a: Bounds, b: Bounds): boolean {
 export function hiddenBounds(): Bounds {
   return { x: 0, y: 0, width: 1, height: 1 };
 }
+
+// ─── 视图显现的边界决策（从 browser-controller 抽出）────────────────
+
+/** 首次显示时使用的默认可见 bounds（与 controller 常量一致）。 */
+export const DEFAULT_VISIBLE_BOUNDS: Bounds = { x: 0, y: 80, width: 1400, height: 820 };
+
+/** 激活切换时的边界决策。 */
+export interface ActivationBounds {
+  /** 旧 active view 应设为的 bounds（无旧 active 时为 null）。 */
+  readonly hideBounds: Bounds | null;
+  /** 新 active view 应设为的 bounds（无新 view 时为 null）。 */
+  readonly showBounds: Bounds | null;
+}
+
+/**
+ * 决定激活切换时新旧 view 各应设为的 bounds。
+ *
+ * 规则（与原 showView 一致）：
+ * - 旧 active → 隐藏到 1x1（`hiddenBounds()`，不用 0x0 避免某些 Chromium 崩溃）
+ * - 新 active → 用**上次记录的 bounds**；无记录则用默认可见 bounds
+ *   （保证切换回来时布局与离开前一致，而不是突然跳成默认值）
+ */
+export function decideActivationBounds(params: {
+  readonly hasHideTarget: boolean;
+  readonly hasShowTarget: boolean;
+  readonly lastBounds: Bounds | null | undefined;
+}): ActivationBounds {
+  return {
+    hideBounds: params.hasHideTarget ? hiddenBounds() : null,
+    showBounds: params.hasShowTarget ? (params.lastBounds ?? DEFAULT_VISIBLE_BOUNDS) : null,
+  };
+}

@@ -26,7 +26,12 @@ import { TempFileRegistry } from "../artifacts/temp-file-registry";
 import type { DownloadManager, DownloadRecord } from "../downloads/download-manager";
 import { type UploadConfig, uploadFileToWorkspace } from "../downloads/download-uploader";
 import type { QaController } from "../qa/qa-controller";
-import { boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
+import {
+  boundsChanged,
+  decideActivationBounds,
+  hiddenBounds,
+  validateBounds,
+} from "./bounds-validator";
 import type { Bounds, WindowConstraints } from "./bounds-validator";
 import { extractDocumentRootId, extractQueryNodeId, toCdpKeyCode } from "./cdp-input";
 import { dispatchCdpInsight } from "./cdp-insights";
@@ -66,9 +71,6 @@ import { teardownThread } from "./thread-teardown";
 import { createSecureView, resolvePartitionKey } from "./view-factory";
 import { ViewRegistry } from "./view-registry";
 import { type WebContentsLike, registerWebContentsHandlers } from "./web-contents-wiring";
-
-/** 默认可见 bounds（首次显示时使用） */
-const DEFAULT_VISIBLE_BOUNDS: Bounds = { x: 0, y: 80, width: 1400, height: 820 };
 
 /**
  * Browser Controller 配置。
@@ -969,20 +971,20 @@ export class BrowserController {
     const change = this.viewRegistry.getActivationChange(threadId, tabId);
     if (!change) return;
 
-    // 设置 active
     this.viewRegistry.setActive(threadId, tabId);
 
-    // 隐藏旧 active view
-    if (change.hide) {
-      change.hide.setBounds(hiddenBounds());
-    }
+    // 边界决策（隐藏到 1x1 / 用上次 bounds 或默认），见 bounds-validator#decideActivationBounds
+    const decision = decideActivationBounds({
+      hasHideTarget: Boolean(change.hide),
+      hasShowTarget: Boolean(change.show),
+      lastBounds: this.lastBounds.get(`${threadId}:${tabId}`),
+    });
 
-    // 显示新 active view
-    if (change.show) {
-      const key = `${threadId}:${tabId}`;
-      const last = this.lastBounds.get(key);
-      const bounds = last ?? DEFAULT_VISIBLE_BOUNDS;
-      change.show.setBounds(bounds);
+    if (change.hide && decision.hideBounds) {
+      change.hide.setBounds(decision.hideBounds);
+    }
+    if (change.show && decision.showBounds) {
+      change.show.setBounds(decision.showBounds);
     }
   }
 

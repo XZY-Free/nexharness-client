@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MIN_BOUNDS_SIZE, boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
+import {
+  DEFAULT_VISIBLE_BOUNDS,
+  MIN_BOUNDS_SIZE,
+  boundsChanged,
+  decideActivationBounds,
+  hiddenBounds,
+  validateBounds,
+} from "./bounds-validator";
 
 /**
  * bounds 校验是主进程对 renderer 输入的信任边界（renderer 可被页面脚本影响）。
@@ -80,5 +87,63 @@ describe("boundsChanged — 亚像素抖动抑制", () => {
 describe("hiddenBounds", () => {
   it("返回 1x1 最小 bounds（不用 0 尺寸，防 Chromium 崩溃）", () => {
     expect(hiddenBounds()).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+  });
+});
+
+describe("decideActivationBounds — 视图显现边界", () => {
+  it("有旧 active → 隐藏到 1x1（非 0x0，避免 Chromium 崩溃）", () => {
+    const d = decideActivationBounds({
+      hasHideTarget: true,
+      hasShowTarget: true,
+      lastBounds: null,
+    });
+    expect(d.hideBounds).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+  });
+
+  it("无旧 active → hideBounds 为 null", () => {
+    expect(
+      decideActivationBounds({ hasHideTarget: false, hasShowTarget: true, lastBounds: null })
+        .hideBounds,
+    ).toBeNull();
+  });
+
+  it("新 active 有上次 bounds → 复用（切换回来布局不变）", () => {
+    const last = { x: 5, y: 6, width: 700, height: 500 };
+    const d = decideActivationBounds({
+      hasHideTarget: true,
+      hasShowTarget: true,
+      lastBounds: last,
+    });
+    expect(d.showBounds).toEqual(last);
+  });
+
+  it("新 active 无上次记录 → 用默认可见 bounds", () => {
+    const d = decideActivationBounds({
+      hasHideTarget: false,
+      hasShowTarget: true,
+      lastBounds: undefined,
+    });
+    expect(d.showBounds).toEqual(DEFAULT_VISIBLE_BOUNDS);
+  });
+
+  it("lastBounds 为 null → 同样回落默认值", () => {
+    const d = decideActivationBounds({
+      hasHideTarget: false,
+      hasShowTarget: true,
+      lastBounds: null,
+    });
+    expect(d.showBounds).toEqual(DEFAULT_VISIBLE_BOUNDS);
+  });
+
+  it("无新 view → showBounds 为 null", () => {
+    expect(
+      decideActivationBounds({ hasHideTarget: true, hasShowTarget: false, lastBounds: null })
+        .showBounds,
+    ).toBeNull();
+  });
+
+  it("默认 bounds 在窗口内容区内合理（y 为正，留给工具栏）", () => {
+    expect(DEFAULT_VISIBLE_BOUNDS.y).toBeGreaterThan(0);
+    expect(DEFAULT_VISIBLE_BOUNDS.width).toBeGreaterThan(0);
   });
 });
