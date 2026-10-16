@@ -51,6 +51,7 @@ import {
   dispatchPress,
   dispatchScroll,
 } from "./input-actions";
+import { ensureMonitoringFor, monitoringKey, releaseMonitoringFor } from "./monitoring";
 import {
   type NavTargetLike,
   dispatchNavAction,
@@ -715,30 +716,12 @@ export class BrowserController {
    * @returns true 表示监控已启用，false 表示 tab 不存在或 attach 失败
    */
   private async ensureMonitoring(threadId: ThreadId, tabId: TabId): Promise<boolean> {
-    const key = `${threadId}:${tabId}`;
-    if (this.monitoringRefs.has(key)) return true;
-
-    const target = await this.debuggerScheduler.acquire(threadId, tabId);
-    if (!target) return false;
-
-    // 启用 Runtime 域（捕获 console + exception 事件）
-    const runtimeResult = await target.sendCommand("Runtime.enable");
-    if (!runtimeResult.ok) {
-      this.debuggerScheduler.release(threadId, tabId);
-      return false;
-    }
-
-    // 启用 Network 域（捕获 request/response/finished/failed 事件）
-    const networkResult = await target.sendCommand("Network.enable");
-    if (!networkResult.ok) {
-      this.debuggerScheduler.release(threadId, tabId);
-      return false;
-    }
-
-    // 持有 ref（不 release），保持 debugger 持续 attached
-    // ref 在 closeTab/closeThread 时释放
-    this.monitoringRefs.add(key);
-    return true;
+    // 启用序列 + 失败回滚见 monitoring#ensureMonitoringFor（含 ref 泄漏防护）
+    return ensureMonitoringFor(monitoringKey(threadId, tabId), {
+      acquire: () => this.debuggerScheduler.acquire(threadId, tabId),
+      release: () => this.debuggerScheduler.release(threadId, tabId),
+      refs: this.monitoringRefs,
+    });
   }
 
   /**
@@ -747,19 +730,13 @@ export class BrowserController {
    * 在 closeTab 时调用，释放 ensureMonitoring 持有的 debugger ref。
    */
   private releaseMonitoring(threadId: ThreadId, tabId: TabId): void {
-    const key = `${threadId}:${tabId}`;
-    if (this.monitoringRefs.has(key)) {
-      this.monitoringRefs.delete(key);
-      this.debuggerScheduler.release(threadId, tabId);
-    }
+    releaseMonitoringFor(monitoringKey(threadId, tabId), {
+      acquire: () => Promise.resolve(null),
+      release: () => this.debuggerScheduler.release(threadId, tabId),
+      refs: this.monitoringRefs,
+    });
   }
 
-  /**
-   * Phase 7-3：处理 CDP 事件，路由到 PageInsightsStore。
-   *
-   * 在 setupWebContentsEvents 中注册为 wc.debugger.on('message') handler。
-   * 仅在 debugger attached 时触发（handler 始终注册但 dormant）。
-   */
   private handleCdpEvent(threadId: ThreadId, tabId: TabId, method: string, params: unknown): void {
     // 归一 + 分发见 cdp-insights#dispatchCdpInsight（纯路由，可单测）
     dispatchCdpInsight(method, params, threadId, tabId, this.pageInsightsStore);
