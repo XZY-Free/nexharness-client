@@ -2,6 +2,10 @@
  * 桌面端运行配置。
  *
  * 打包时随应用资源提供服务地址；启动环境变量仍可覆盖它，便于测试与私有部署。
+ *
+ * 安全默认：`allowInsecureRemoteOrigin` 缺省时按 false 处理——origin-guard 对非
+ * localhost 的 http origin 一律拒绝。只有连接**明文 http 的私有部署**时才允许显式
+ * 置 true（等价于接受该部署的会话 Cookie 可被同网段窃听），不得作为出厂默认。
  */
 export interface DesktopRuntimeConfig {
   serverOrigin?: string;
