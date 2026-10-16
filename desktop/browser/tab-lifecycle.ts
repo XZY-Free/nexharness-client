@@ -79,3 +79,58 @@ export function shouldCleanupLocalFile(reason: DownloadCleanupReason): boolean {
       return true;
   }
 }
+
+// ─── 单 tab 关闭清理序列（从 browser-controller 抽出）──────────────
+
+/** 关闭单个 tab 时的清理依赖。 */
+export interface CloseTabDeps {
+  /** 从窗口 contentView 移除 view 并关 webContents；返回 webContentsId 或 null（view 不存在）。 */
+  removeAndCloseView: () => number | null;
+  /** 从 view 注册表删除。 */
+  forgetView: () => void;
+  /** 清 lastBounds。 */
+  forgetBounds: () => void;
+  /** 清 webContents 反向索引。 */
+  forgetWebContents: (webContentsId: number) => void;
+  /** 释放监控 ref。 */
+  releaseMonitoring: () => void;
+  /** 清页面洞察缓冲。 */
+  clearPageInsights: () => void;
+  /** 从 tabStore 移除并返回被关的 tab 元数据（不存在返回 null）。 */
+  closeTabInStore: () => { incognito: boolean } | null;
+  /** 显示新的 active view（若还有 tab）。 */
+  showNewActive: () => void;
+  /** 关闭后该 thread 剩余的 tab（用于 incognito 判定）。 */
+  remainingTabs: () => readonly { incognito: boolean }[];
+  /** 销毁 incognito partitions。 */
+  destroyIncognitoPartitions: () => void;
+}
+
+/**
+ * 关闭单个 tab 的清理序列（顺序与原实现一致）。
+ *
+ * 关键语义：
+ * - **先移除 view 再清各类索引**（避免索引残留指向已关闭的 webContents）
+ * - incognito session 判定在**从 store 移除之后**（remainingTabs 才是"剩余"）
+ * - 无 view → 直接返回 null（不做任何清理，保持幂等）
+ *
+ * @returns 被关 tab 的元数据（不存在则 null）
+ */
+export function closeTabWithCleanup(deps: CloseTabDeps): { incognito: boolean } | null {
+  const webContentsId = deps.removeAndCloseView();
+  if (webContentsId === null) return null;
+
+  deps.forgetView();
+  deps.forgetBounds();
+  deps.forgetWebContents(webContentsId);
+  deps.releaseMonitoring();
+  deps.clearPageInsights();
+
+  const tab = deps.closeTabInStore();
+  deps.showNewActive();
+
+  const decision = decideCloseTab(tab?.incognito ?? false, deps.remainingTabs());
+  if (decision.destroyIncognitoSession) deps.destroyIncognitoPartitions();
+
+  return tab;
+}

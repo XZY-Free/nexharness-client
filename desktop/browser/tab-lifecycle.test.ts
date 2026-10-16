@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type DownloadCleanupReason,
+  closeTabWithCleanup,
   decideCloseTab,
   decideUploadOutcome,
   shouldCleanupLocalFile,
@@ -84,5 +85,98 @@ describe("shouldCleanupLocalFile — 终态一律清理", () => {
 
   it("upload_failed 也清理（fire-and-forget 不重试，保留只会成孤儿）", () => {
     expect(shouldCleanupLocalFile("upload_failed")).toBe(true);
+  });
+});
+
+describe("closeTabWithCleanup — 单 tab 关闭清理序列", () => {
+  function fakeDeps(over = {}) {
+    const log: string[] = [];
+    return {
+      log,
+      removeAndCloseView: () => {
+        log.push("removeAndCloseView");
+        return 101;
+      },
+      forgetView: () => log.push("forgetView"),
+      forgetBounds: () => log.push("forgetBounds"),
+      forgetWebContents: (id: number) => log.push(`forgetWebContents:${id}`),
+      releaseMonitoring: () => log.push("releaseMonitoring"),
+      clearPageInsights: () => log.push("clearPageInsights"),
+      closeTabInStore: () => {
+        log.push("closeTabInStore");
+        return { incognito: false };
+      },
+      showNewActive: () => log.push("showNewActive"),
+      remainingTabs: () => [] as { incognito: boolean }[],
+      destroyIncognitoPartitions: () => log.push("destroyIncognitoPartitions"),
+      ...over,
+    };
+  }
+
+  it("view 不存在 → 直接 null 且**不做任何清理**（幂等）", () => {
+    // 注意：over 会整体替换 removeAndCloseView，故这里自记日志
+    const log: string[] = [];
+    const deps = fakeDeps({
+      removeAndCloseView: () => {
+        log.push("removeAndCloseView");
+        return null;
+      },
+      forgetView: () => log.push("forgetView"),
+      closeTabInStore: () => {
+        log.push("closeTabInStore");
+        return { incognito: false };
+      },
+    });
+    expect(closeTabWithCleanup(deps)).toBeNull();
+    // 只探测 view，后续清理一律不执行
+    expect(log).toEqual(["removeAndCloseView"]);
+  });
+
+  it("正常关闭：完整清理序列且顺序正确", () => {
+    const deps = fakeDeps();
+    const tab = closeTabWithCleanup(deps);
+    expect(tab).toEqual({ incognito: false });
+    expect(deps.log).toEqual([
+      "removeAndCloseView",
+      "forgetView",
+      "forgetBounds",
+      "forgetWebContents:101",
+      "releaseMonitoring",
+      "clearPageInsights",
+      "closeTabInStore",
+      "showNewActive",
+    ]);
+  });
+
+  it("先移除 view 再清索引（顺序约束）", () => {
+    const deps = fakeDeps();
+    closeTabWithCleanup(deps);
+    const idx = (n: string) => deps.log.indexOf(n);
+    expect(idx("removeAndCloseView")).toBeLessThan(idx("forgetWebContents:101"));
+    expect(idx("forgetWebContents:101")).toBeLessThan(idx("closeTabInStore"));
+  });
+
+  it("关闭最后一个 incognito tab → 销毁 session", () => {
+    const deps = fakeDeps({
+      closeTabInStore: () => ({ incognito: true }),
+      remainingTabs: () => [{ incognito: false }],
+    });
+    closeTabWithCleanup(deps);
+    expect(deps.log).toContain("destroyIncognitoPartitions");
+  });
+
+  it("还有其它 incognito tab → 不销毁 session（判定基于**关闭后剩余**）", () => {
+    const deps = fakeDeps({
+      closeTabInStore: () => ({ incognito: true }),
+      remainingTabs: () => [{ incognito: true }],
+    });
+    closeTabWithCleanup(deps);
+    expect(deps.log).not.toContain("destroyIncognitoPartitions");
+  });
+
+  it("关闭普通 tab → 不销毁 session", () => {
+    const deps = fakeDeps({ closeTabInStore: () => ({ incognito: false }) });
+    closeTabWithCleanup(deps);
+    expect(deps.log).not.toContain("destroyIncognitoPartitions");
   });
 });

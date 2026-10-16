@@ -65,7 +65,7 @@ import type { PermissionType } from "./permission-policy";
 import { SCREENSHOT_FILE_MODE, normalizeScreenshotFormat, screenshotFilePath } from "./screenshot";
 import { SessionManager } from "./session-manager";
 import { capturePageSnapshot } from "./snapshot";
-import { decideCloseTab } from "./tab-lifecycle";
+import { closeTabWithCleanup, decideCloseTab } from "./tab-lifecycle";
 import { type TabRestore, applyTabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
@@ -281,41 +281,29 @@ export class BrowserController {
    * 关闭 tab。
    */
   closeTab(threadId: ThreadId, tabId: TabId): TabMetadata | null {
-    const view = this.viewRegistry.get(threadId, tabId);
-    if (!view) return null;
-
-    // 从 BrowserWindow contentView 移除
-    this.window?.contentView.removeChildView(view);
-
-    // 从注册表删除
-    this.viewRegistry.delete(threadId, tabId);
-    view.webContents.close();
-    // 清理 lastBounds
-    this.lastBounds.delete(`${threadId}:${tabId}`);
-
-    // Phase 7-1：清理 webContents 反向索引
-    this.webContentsIndex.delete(view.webContents.id);
-
-    // Phase 7-3：释放监控 ref + 清理页面洞察缓冲
-    this.releaseMonitoring(threadId, tabId);
-    this.pageInsightsStore.clearTab(threadId, tabId);
-
-    // 从 tabStore 删除
-    const tab = this.tabStore.closeTab(threadId, tabId);
-
-    // 显示新的 active view（如果有）
-    const newActiveTabId = this.tabStore.getActiveTab(threadId)?.id;
-    if (newActiveTabId) {
-      this.showView(threadId, newActiveTabId);
-    }
-
-    // incognito session 销毁规则（纯逻辑抽出，见 tab-lifecycle.ts）
-    const decision = decideCloseTab(tab?.incognito ?? false, this.tabStore.getTabs(threadId));
-    if (decision.destroyIncognitoSession) {
-      this.sessionManager.destroyIncognitoPartitions(threadId);
-    }
-
-    return tab;
+    // 清理序列与顺序见 tab-lifecycle#closeTabWithCleanup
+    return closeTabWithCleanup({
+      removeAndCloseView: () => {
+        const view = this.viewRegistry.get(threadId, tabId);
+        if (!view) return null;
+        this.window?.contentView.removeChildView(view);
+        const wcId = view.webContents.id;
+        view.webContents.close();
+        return wcId;
+      },
+      forgetView: () => this.viewRegistry.delete(threadId, tabId),
+      forgetBounds: () => this.lastBounds.delete(`${threadId}:${tabId}`),
+      forgetWebContents: (id) => this.webContentsIndex.delete(id),
+      releaseMonitoring: () => this.releaseMonitoring(threadId, tabId),
+      clearPageInsights: () => this.pageInsightsStore.clearTab(threadId, tabId),
+      closeTabInStore: () => this.tabStore.closeTab(threadId, tabId),
+      showNewActive: () => {
+        const newActiveTabId = this.tabStore.getActiveTab(threadId)?.id;
+        if (newActiveTabId) this.showView(threadId, newActiveTabId);
+      },
+      remainingTabs: () => this.tabStore.getTabs(threadId),
+      destroyIncognitoPartitions: () => this.sessionManager.destroyIncognitoPartitions(threadId),
+    }) as TabMetadata | null;
   }
 
   /**
