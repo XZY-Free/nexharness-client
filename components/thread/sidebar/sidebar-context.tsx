@@ -1,5 +1,5 @@
 /**
- * Sidebar 收起状态上下文（W3-2）。
+ * Sidebar 收起状态上下文。
  *
  * 职责：
  * - 管理侧栏 collapsed 状态。

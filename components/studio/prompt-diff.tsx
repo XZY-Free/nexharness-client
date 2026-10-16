@@ -8,7 +8,7 @@ import {
 import { useMemo, useState } from "react";
 
 /**
- * Phase 4-4 Stage B：prompt 行级 diff（自写 LCS，不引入 diff 库）。
+ * prompt 行级 diff（自写 LCS，不引入 diff 库）。
  *
  * 仅对 skill_versions.promptTemplate 文本做行级比较。diffLines 是纯函数（可单测），
  * 组件层负责选版本 + 渲染着色（add 绿 / del 红 / same 灰）。

@@ -1,5 +1,5 @@
 /**
- * W3-6：基于 sonner 的 toast 系统。
+ * 基于 sonner 的 toast 系统。
  *
  * 保持原有 useToast() API（toast.error/success/info），底层接线 sonner。
  * 顶层挂载 ToastProvider 即可，消费端零改动。

@@ -12,7 +12,7 @@ import { logoutClientSession } from "@/lib/client/logout";
 import { cn } from "@/lib/utils";
 import { LogOut, PanelLeft, Plus, Search, User } from "lucide-react";
 /**
- * Desktop 会话侧栏（W3-2）。
+ * Desktop 会话侧栏。
  *
  * 结构（自上而下）：
  * 1. macOS 红绿灯安全区（普通窗口 32px，原生全屏 / Web 预览为 0）。

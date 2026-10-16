@@ -17,7 +17,7 @@
  * 无规则命中时使用冻结 Revision 的 defaultDecision（默认 pause）。
  *
  * 本文件自带匹配逻辑（toolPattern / argMatcher / scope），不复用已删除的 legacy
- * lib/permission/engine.ts（02-6 P9 物理删除）。正则 ReDoS 防护复用 lib/security/regex-safety。
+ * lib/permission/engine.ts（物理删除）。正则 ReDoS 防护复用 lib/security/regex-safety。
  */
 import { isReDoSRisky } from "@/lib/security/regex-safety";
 import type { PermissionDecisionValue } from "@/lib/server-schema/permission";

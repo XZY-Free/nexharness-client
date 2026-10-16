@@ -263,7 +263,7 @@ export const Icon = {
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </Svg>
   ),
-  // V9 阶段 4 X23：隐身浏览器会话入口图标
+  // X23：隐身浏览器会话入口图标
   eyeOff: (p: IconProps) => (
     <Svg {...p}>
       <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />

@@ -119,7 +119,7 @@ export const TOOL_LABELS: Record<string, string> = {
   deployToEnvironment: "部署",
   deployStatus: "部署状态",
   rollback: "回滚",
-  // V9 阶段 6：AI 浏览器工具
+  // AI 浏览器工具
   browserGetTabs: "浏览器标签页",
   browserSnapshot: "页面快照",
   browserGetConsole: "控制台消息",
@@ -132,7 +132,7 @@ export const TOOL_LABELS: Record<string, string> = {
   browserScroll: "滚动",
   browserPressKey: "按键",
   browserSelectOption: "选择选项",
-  // V9 阶段 8：下载与上传工具
+  // 下载与上传工具
   browserListDownloads: "下载记录",
   browserUploadFile: "上传文件",
 };

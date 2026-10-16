@@ -42,7 +42,7 @@ export interface LogoutResult {
 }
 
 /**
- * Phase 8：执行退出登录清理。
+ * 执行退出登录清理。
  *
  * @param bridgeClient Agent Bridge 客户端（可选，未连接时跳过断开步骤）
  * @param sessionManager Session 管理器（用于枚举已注册 userId）

@@ -31,8 +31,11 @@ dev server 将 `/api`、`/admin/api`、`/studio/api`、`/preview` 代理到 nexh
 | `pnpm build` | typecheck + 静态产物（`dist/`） |
 | `pnpm typecheck` | `tsc --noEmit`（Web 侧） |
 | `pnpm lint` / `pnpm lint:fix` | Biome 检查 / 自动修复 |
-| `pnpm test` / `pnpm test:watch` | 单元测试（vitest，纯逻辑模块） |
+| `pnpm test` / `pnpm test:watch` | 单元测试（vitest，纯逻辑模块）；`test` 含收集完整性校验 |
+| `pnpm test:unit` | 仅 `vitest run`（无收集校验，调试用） |
+| `pnpm test:collect-check` | 单独跑测试收集完整性校验 |
 | `pnpm test:e2e` | E2E 冒烟（Playwright；需先起 `pnpm dev`） |
+| `pnpm test:electron` | 真实 Electron 行为测试（browser-controller 等） |
 | `pnpm format` | Biome 格式化 |
 | `pnpm preview` | 预览构建产物 |
 | `pnpm build:desktop-renderer` | 桌面渲染器构建（`desktop/renderer-dist/`） |
@@ -46,8 +49,9 @@ dev server 将 `/api`、`/admin/api`、`/studio/api`、`/preview` 代理到 nexh
 
 ## 桌面端
 
-- 主进程入口 `desktop/main/index.ts`；桌面页面由本机 loopback server 提供（`desktop/renderer/`），API/SSE 走配置的 Server origin。
-- 本地数据库：SQLite（`userData/desktop.sqlite`，migrations 在 `desktop/storage/migrations/`）；设备身份存系统 keychain（Electron safeStorage）。
+- 主进程入口 `desktop/main/index.ts`；桌面页面由本机 loopback server 提供（`desktop/renderer/`），API/SSE 经该 server 同源代理到配置的 Server origin。
+- 本地数据库：SQLite（`userData/desktop.sqlite`，WAL，migrations 在 `desktop/storage/migrations/`）；设备身份 ed25519 密钥经 Electron safeStorage 加密存于 `userData/keychain/`。
+- 安全默认：受信任 Server origin 仅允许 https 或 localhost 的 http；`allowInsecureRemoteOrigin` 默认 `false`（仅连接明文 http 私有部署时才置 `true`）。渲染页启用 CSP；工作区命令在 macOS sandbox 内执行（仅放行出站网络）。
 - 自动更新：electron-updater，更新源默认 `https://updates.nexharness.com/mac`（`desktop/electron-builder.yml` 的 `publish` 配置）。
 - 签名打包需要的环境变量：`CSC_LINK`、`CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`APPLE_TEAM_ID`。
 
@@ -78,26 +82,30 @@ Web SPA（构建期 / 运行期）：
 | `NEX_SERVER_ORIGIN` | `http://localhost:3000` | 受信任 Server origin，逗号分隔可配多个 |
 | `NEX_BRIDGE_URL` | `ws://localhost:3002` | Agent Bridge WebSocket 地址 |
 | `NEX_AUTH_CENTER_URL` | — | auth-center origin（认证窗口放行用） |
-| `NEX_ALLOW_INSECURE_REMOTE_ORIGIN` | — | 置 `1` 放行公网 http origin（私有部署） |
+| `NEX_ALLOW_INSECURE_REMOTE_ORIGIN` | `false` | 置 `1` 放行公网 http origin（仅连接明文 http 私有部署时开启） |
 | `NEX_E2E_LOG_FILE` / `NEX_E2E_DISABLE_SINGLE_INSTANCE` | — | E2E 诊断日志 / 允许多实例（仅测试） |
 
-密钥约束：不提交任何 `.env*` 与密钥；桌面签名材料只从环境变量读取；设备私钥存系统 keychain。
+桌面另可随包分发 `desktop/runtime-config.json`（`serverOrigin`、`allowInsecureRemoteOrigin`）；环境变量优先级高于该文件。
+
+密钥约束：不提交任何 `.env*` 与密钥；桌面签名材料只从环境变量读取；设备私钥经 safeStorage 加密存于 `userData/keychain/`。
 
 ## 项目结构
 
 ```
 src/                 Web SPA：入口（main.tsx/app.tsx）、路由表（routes/）、
-                     next→react-router shim（shims/）、运行时配置、样式
+                     运行时配置、样式。Studio 路由经 React.lazy 按需分包
 components/          UI 组件：thread（对话时间线）/ studio（管理后台）/ ui（基础组件）/
                      hooks（数据 hooks）/ auth / brand / desktop / workspace-panel
 lib/                 共享库：client（Thread 投影层）/ control-plane-client（控制面 API）/
-                     desktop（桥接协议与安全）/ identity（权限快照）/ permission（策略评估）/
-                     persistence/schema（服务端 schema 投影）/ runtime / security / studio /
-                     api-fetch / i18n / utils
+                     desktop（桥接协议与安全）/ identity + identity-client（权限快照）/
+                     permission（策略评估）/ server-schema（服务端 schema 投影）/ runtime /
+                     security / studio / thread / branding / api-fetch / i18n / utils
 desktop/             Electron：main（主进程）/ preload / renderer / bridge / browser /
                      storage / downloads / artifacts / updater / qa / auth / branding
-scripts/             桌面构建脚本（renderer 构建 / main esbuild 打包 / native 重编译）
+scripts/             构建与校验脚本（renderer 构建 / main esbuild 打包 / native 重编译 /
+                     测试收集校验 / Electron 测试驱动）
 deploy/              Dockerfile + nginx.conf
+e2e/                 Playwright 冒烟脚本 + 真实 Electron 行为测试用例
 public/              品牌资产与 theme-init.js
 ```
 
@@ -105,12 +113,14 @@ public/              品牌资产与 theme-init.js
 
 - TypeScript strict（含 `noUncheckedIndexedAccess`）；Biome 统一 lint + format（2 空格缩进，行宽 100）。
 - 应用内 API 请求统一走 `lib/api-fetch.ts` 的 `apiFetch` / `apiPath`（自动拼 basePath），不要裸 `fetch("/api/...")`。
-- `next/link`、`next/navigation` 通过 alias 映射到 react-router shim；新代码直接用 react-router API。
-- CI（`.github/workflows/ci.yml`，push main / PR）：`pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build` → `pnpm build:desktop-renderer` → 桌面 `tsc`。
+- 路由用 react-router API（`BrowserRouter` + `basename`）；Studio 页面动态引入。
+- CI（`.github/workflows/ci.yml`，push main / PR）：`pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build` → `pnpm build:desktop-renderer` → 桌面 `tsc` → `pnpm test:electron`。
 
 ## 测试
 
-- **单元测试（vitest）**：`pnpm test`。覆盖不依赖 electron / 浏览器 / 服务端的纯逻辑——origin 守卫、RPC 信封安全校验、ed25519 签名、脱敏、CDP 输入映射。新增此类模块时请在旁边加 `*.test.ts`。
+- **单元测试（vitest）**：`pnpm test`。覆盖不依赖 electron / 浏览器 / 服务端的纯逻辑——origin 守卫、RPC 信封安全校验（签名 / nonce / 审批归属）、ed25519 签名、脱敏、CDP 输入映射、Thread 投影 reducer、权限策略评估。新增此类模块时请在旁边加 `*.test.ts`。需要 DOM 的 React hooks 测试在文件首行加 `// @vitest-environment jsdom`。
+  - `pnpm test` 内置**测试收集完整性校验**（vitest 在负载下会静默少收集用例且退出码仍为 0），单独校验用 `pnpm test:collect-check`。
 - **E2E 冒烟（Playwright）**：先起 dev server（`pnpm dev`），再 `pnpm test:e2e`。覆盖 SPA 加载、门禁拦截、404 视图、无未捕获异常。完整登录后链路需 nexharness 服务端（:3210）与 auth-center 在线。
+- **真实 Electron 行为测试**：`pnpm test:electron`。在真实 Electron 中验证 browser-controller 的 view 生命周期 / Session 隔离 / 下载联动等（这些无法由类型检查或纯逻辑单测覆盖）。首次需下载 Electron 二进制（`node node_modules/electron/install.js`）。
 
 AI 协作请读 `AGENTS.md`。

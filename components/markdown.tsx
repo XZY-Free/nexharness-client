@@ -1,5 +1,5 @@
 /**
- * V4 Phase D-1：Markdown 渲染 + 代码块语法高亮（shiki）+ 复制按钮。
+ * Markdown 渲染 + 代码块语法高亮（shiki）+ 复制按钮。
  *
  * shiki 用 TextMate grammar + VS Code 主题逐 token 精确着色，精度与视觉现代感优于
  * rehype-highlight/highlight.js 的正则匹配——代码块是「AI 写代码」工具的高频核心展示，

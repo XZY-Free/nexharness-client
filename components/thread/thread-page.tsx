@@ -150,7 +150,7 @@ export function ThreadPage({
     setLocateItem((current) => ({ itemId, requestId: (current?.requestId ?? 0) + 1 }));
   }, []);
 
-  // W3-2：44px 主区标题行（Thread 标题 + 状态点）。
+  // 44px 主区标题行（Thread 标题 + 状态点）。
   // - 拖拽区是独立绝对定位层，避免覆盖左侧窗口控件和右侧工作台按钮。
   // - 侧栏收起后从 160px 开始拖拽，为搜索与展开按钮保留真实鼠标命中区。
   // - 无条件渲染：thread 未加载时标题显示"新会话"占位、状态点隐藏。
@@ -340,9 +340,9 @@ export function ThreadPage({
     </div>
   );
 
-  // W3-2：Desktop 三段式布局（侧栏 + 主区 + 工作台）。
+  // Desktop 三段式布局（侧栏 + 主区 + 工作台）。
   // - 标题行横贯主区顶部，下方左右分栏。
-  // - 次级信息（Agent / Goal / 位置）不再常驻一行（W3-2 规格：移入输入区选择器或标题行 tooltip）。
+  // - 次级信息（Agent / Goal / 位置）不再常驻一行（规格：移入输入区选择器或标题行 tooltip）。
   // - 工作台默认收起，员工可从标题栏主动展开并调整宽度。
   if (variant === "desktop") {
     return (

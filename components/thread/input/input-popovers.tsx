@@ -60,7 +60,7 @@ export function PlusMenuPopover({
             label="目标"
             subtitle="设置要持续追求的目标"
             onClick={() => {
-              /* W3-5 后接入 Goal */
+              /* 后接入 Goal */
               setOpen(false);
             }}
           />

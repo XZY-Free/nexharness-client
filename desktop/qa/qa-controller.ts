@@ -80,7 +80,7 @@ export interface QaWebContentsHandle {
 export class QaController {
   /** threadId → QA handle */
   private readonly qaHandles = new Map<string, QaWebContentsHandle>();
-  /** threadId → PageInsightsStore（复用 Phase 7-3 的缓冲存储） */
+  /** threadId → PageInsightsStore（复用 的缓冲存储） */
   private readonly pageInsightsStore: PageInsightsStore;
 
   constructor(

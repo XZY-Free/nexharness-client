@@ -45,22 +45,22 @@ export interface BrowserCommandTarget {
   captureScreenshot?(threadId: string, tabId: string, format: string): Promise<string>;
   /** 列出 Thread 的浏览器下载记录 */
   listDownloads?(threadId: string): unknown[];
-  /** Phase 7-3：获取页面快照（结构化 DOM 摘要 + 可见文本） */
+  /** 获取页面快照（结构化 DOM 摘要 + 可见文本） */
   getSnapshot?(
     threadId: string,
     tabId: string,
     maxTextLength?: number,
   ): Promise<{ text: string; domSummary: string } | null>;
-  /** Phase 7-3：获取页面可访问性树 */
+  /** 获取页面可访问性树 */
   getAccessibilityTree?(threadId: string, tabId: string): Promise<{ tree: unknown[] } | null>;
-  /** Phase 7-3：获取缓冲的 Console 条目 */
+  /** 获取缓冲的 Console 条目 */
   getConsoleEntries?(
     threadId: string,
     tabId: string,
     level?: "error" | "warning+",
     limit?: number,
   ): Promise<{ entries: unknown[] } | null>;
-  /** Phase 7-3：获取缓冲的 Network 条目 */
+  /** 获取缓冲的 Network 条目 */
   getNetworkEntries?(
     threadId: string,
     tabId: string,
@@ -111,7 +111,7 @@ export interface BrowserActionTarget {
   ): Promise<boolean>;
   /** 滚动 */
   scroll(threadId: string, tabId: string, deltaX: number, deltaY: number): Promise<boolean>;
-  /** 上传工作区文件（Phase 7-2：接收 downloadUrl，下载到临时目录后交给 CDP） */
+  /** 上传工作区文件（接收 downloadUrl，下载到临时目录后交给 CDP） */
   uploadWorkspaceFile(
     threadId: string,
     tabId: string,
@@ -127,12 +127,11 @@ export interface BrowserActionTarget {
  * - browser.getTabs → 返回 { tabs: TabMetadata[] }
  * - browser.getPageMetadata → 返回 { url, title, favicon, loadState, canGoBack, canGoForward }
  * - browser.screenshot → 返回 { path }（通过 captureScreenshot）
- * - browser.snapshot → 返回 { text, domSummary }（Phase 6 通过 DebuggerSession）
- * - browser.getAccessibilityTree → 返回 { tree }（Phase 6 通过 DebuggerSession）
- * - browser.getConsole → 返回 { entries }（Phase 6 通过 DebuggerSession）
- * - browser.getNetwork → 返回 { entries }（Phase 6 通过 DebuggerSession）
- * - browser.listDownloads → 返回 { downloads }（Phase 7-1）
- */
+ * - browser.snapshot → 返回 { text, domSummary }（通过 DebuggerSession）
+ * - browser.getAccessibilityTree → 返回 { tree }（通过 DebuggerSession）
+ * - browser.getConsole → 返回 { entries }（通过 DebuggerSession）
+ * - browser.getNetwork → 返回 { entries }（通过 DebuggerSession）
+ * - browser.listDownloads → 返回 { downloads } */
 export async function executeReadCommand(params: {
   target: BrowserCommandTarget;
   command: string;

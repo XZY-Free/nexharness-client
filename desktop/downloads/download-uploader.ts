@@ -35,7 +35,7 @@ export interface UploadResult {
 export interface UploadConfig {
   /** Server origin（如 http://localhost:3000）。 */
   serverOrigin: string;
-  /** 设备认证 token（用于鉴权）。Phase 7-1 暂时可选。 */
+  /** 设备认证 token（用于鉴权）。暂时可选。 */
   authToken?: string;
 }
 

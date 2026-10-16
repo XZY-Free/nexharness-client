@@ -5,7 +5,7 @@ import { StudioPage } from "@/components/studio/studio-page";
 import type { StudioAuditRow } from "@/lib/studio/admin-audit";
 
 /**
- * Agent Studio Audit 页（Phase 4-4 切片 C · 页面数据 API 化）。
+ * Agent Studio Audit 页（切片 C · 页面数据 API 化）。
  *
  * - 数据来自 GET /studio/api/audit（服务端审计表，受 audit.read 守卫）。
  * - 员工无权时接口返回 403，页面展示门禁；server component 直读已移除。

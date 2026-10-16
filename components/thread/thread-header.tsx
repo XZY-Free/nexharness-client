@@ -65,7 +65,7 @@ export function ThreadHeader({
   const taskStatus = deriveTaskStatus(latestTurn);
   const sidebar = useOptionalSidebar();
 
-  // Desktop 形态：标题信息上移至 ThreadPage 的 38px 标题栏（W2-2），
+  // Desktop 形态：标题信息上移至 ThreadPage 的 38px 标题栏，
   // 此处仅保留次级信息行（Goal / 位置）。
   if (variant === "desktop") {
     return (

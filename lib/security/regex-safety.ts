@@ -7,7 +7,7 @@
  * - 存在明显 ReDoS 风险（嵌套量词 / 反向引用 / 灾难性回溯）→ 拒绝发布。
  *
  * 这是保守启发式，只拦最明显的灾难性回溯模式；不作为完整正则安全引擎。
- * 与已删除的 legacy lib/policy/config.ts 编译路径解耦（02-6 P9），供正式 Policy Revision
+ * 与已删除的 legacy lib/policy/config.ts 编译路径解耦，供正式 Policy Revision
  * 校验与 lib/permission/policy-evaluator.ts 复用。
  */
 
