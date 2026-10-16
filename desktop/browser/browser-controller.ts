@@ -57,6 +57,7 @@ import { PageInsightsStore } from "./page-insights-store";
 import { checkUrlSafety } from "./permission-policy";
 import type { PermissionType } from "./permission-policy";
 import { SessionManager } from "./session-manager";
+import { capturePageSnapshot } from "./snapshot";
 import { decideCloseTab } from "./tab-lifecycle";
 import type { TabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
@@ -634,42 +635,8 @@ export class BrowserController {
     const target = await this.debuggerScheduler.acquire(threadId, tabId);
     if (!target) return null;
     try {
-      const expression = `(function() {
-        const body = document.body;
-        if (!body) return JSON.stringify({ text: '', domSummary: '{}' });
-        const text = body.innerText || '';
-        const forms = Array.from(document.querySelectorAll('form')).map(f => ({
-          action: f.action || '',
-          method: f.method || 'get',
-          fieldCount: f.elements.length
-        }));
-        const linkCount = document.querySelectorAll('a[href]').length;
-        const formCount = document.querySelectorAll('form').length;
-        const inputCount = document.querySelectorAll('input').length;
-        const imgCount = document.querySelectorAll('img').length;
-        const meta = {
-          title: document.title || '',
-          url: location.href,
-          forms,
-          linkCount,
-          formCount,
-          inputCount,
-          imgCount
-        };
-        return JSON.stringify({ text, domSummary: JSON.stringify(meta) });
-      })()`;
-      const result = await target.sendCommand("Runtime.evaluate", {
-        expression,
-        returnByValue: true,
-      });
-      if (!result.ok || !result.result) return null;
-      const value = (result.result as { result?: { value?: string } }).result?.value;
-      if (typeof value !== "string") return null;
-      const parsed = JSON.parse(value) as { text: string; domSummary: string };
-      if (maxTextLength && maxTextLength > 0 && parsed.text.length > maxTextLength) {
-        parsed.text = `${parsed.text.slice(0, maxTextLength - 3)}...`;
-      }
-      return parsed;
+      // 采集脚本（固定字面量）+ 结果解析 + 截断，见 browser/snapshot.ts
+      return await capturePageSnapshot(target, maxTextLength);
     } finally {
       this.debuggerScheduler.release(threadId, tabId);
     }
