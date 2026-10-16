@@ -39,6 +39,14 @@ import {
   handleWillDownload,
 } from "./download-coordinator";
 import {
+  buildSelectScript,
+  dispatchClick,
+  dispatchDoubleClick,
+  dispatchInsertText,
+  dispatchPress,
+  dispatchScroll,
+} from "./input-actions";
+import {
   type NavTargetLike,
   dispatchNavAction,
   normalizeUrl,
@@ -443,94 +451,56 @@ export class BrowserController {
     y: number,
     button?: string,
   ): Promise<boolean> {
-    const validButton = button === "right" || button === "middle" ? button : "left";
     const target = await this.debuggerScheduler.acquire(threadId, tabId);
     if (!target) return false;
     try {
-      const press = await target.sendCommand("Input.dispatchMouseEvent", {
-        type: "mousePressed",
-        x,
-        y,
-        button: validButton,
-        clickCount: 1,
-      });
-      if (!press.ok) return false;
-      const release = await target.sendCommand("Input.dispatchMouseEvent", {
-        type: "mouseReleased",
-        x,
-        y,
-        button: validButton,
-        clickCount: 1,
-      });
-      return release.ok;
+      return await dispatchClick(target, x, y, button);
     } finally {
       this.debuggerScheduler.release(threadId, tabId);
     }
   }
 
-  /**
-   * 双击指定坐标（两次连续 click）。
-   */
+  /** 双击指定坐标（两次连续 click）。 */
   async doubleClick(threadId: ThreadId, tabId: TabId, x: number, y: number): Promise<boolean> {
-    const ok1 = await this.click(threadId, tabId, x, y, "left");
-    if (!ok1) return false;
-    return this.click(threadId, tabId, x, y, "left");
+    const target = await this.debuggerScheduler.acquire(threadId, tabId);
+    if (!target) return false;
+    try {
+      return await dispatchDoubleClick(target, x, y);
+    } finally {
+      this.debuggerScheduler.release(threadId, tabId);
+    }
   }
 
-  /**
-   * 输入文本。
-   * @param selector - 可选 CSS 选择器，定位焦点元素后再输入
-   */
+  /** 输入文本；给出 selector 时先定位并聚焦。 */
   async type(threadId: ThreadId, tabId: TabId, text: string, selector?: string): Promise<boolean> {
     const target = await this.debuggerScheduler.acquire(threadId, tabId);
     if (!target) return false;
     try {
-      // 如果有 selector，先定位并聚焦元素
       if (selector) {
         const focused = await this.focusElement(target, selector);
         if (!focused) return false;
       }
-      const result = await target.sendCommand("Input.insertText", { text });
-      return result.ok;
+      return await dispatchInsertText(target, text);
     } finally {
       this.debuggerScheduler.release(threadId, tabId);
     }
   }
 
-  /**
-   * 按键。
-   * @param key - 键名，如 'Enter'、'Tab'、'Escape'、'a' 等
-   */
+  /** 按键（如 'Enter'、'Tab'、'Escape'）。 */
   async press(threadId: ThreadId, tabId: TabId, key: string): Promise<boolean> {
     const target = await this.debuggerScheduler.acquire(threadId, tabId);
     if (!target) return false;
     try {
-      const cdpKey = toCdpKeyCode(key);
-      const down = await target.sendCommand("Input.dispatchKeyEvent", {
-        type: "keyDown",
-        key: cdpKey.key,
-        code: cdpKey.code,
-        windowsVirtualKeyCode: cdpKey.keyCode,
-      });
-      if (!down.ok) return false;
-      const up = await target.sendCommand("Input.dispatchKeyEvent", {
-        type: "keyUp",
-        key: cdpKey.key,
-        code: cdpKey.code,
-        windowsVirtualKeyCode: cdpKey.keyCode,
-      });
-      return up.ok;
+      return await dispatchPress(target, toCdpKeyCode(key));
     } finally {
       this.debuggerScheduler.release(threadId, tabId);
     }
   }
 
   /**
-   * 选择下拉选项。
-   * 通过 webContents.executeJavaScript 设置 select 的 value 并触发 change 事件。
-   * @param selector - select 元素的 CSS 选择器
-   * @param value - 选项的 value（可选，优先于 label）
-   * @param label - 选项的文本（可选）
+   * 选择下拉选项（通过 executeJavaScript 设值 + 派发 change）。
+   *
+   * 脚本由 input-actions#buildSelectScript 构造（**JSON.stringify 防注入**）。
    */
   async select(
     threadId: ThreadId,
@@ -541,22 +511,10 @@ export class BrowserController {
   ): Promise<boolean> {
     const view = this.viewRegistry.get(threadId, tabId);
     if (!view) return false;
-    const wc = view.webContents;
-    const setByValue = value !== undefined ? `el.value = ${JSON.stringify(value)};` : "";
-    const setByLabel =
-      label !== undefined
-        ? `for (const opt of el.options) { if (opt.text === ${JSON.stringify(label)}) { el.value = opt.value; break; } }`
-        : "";
-    const script = `(function() {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el || el.tagName !== 'SELECT') return false;
-      ${setByValue}
-      ${setByLabel}
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
-    })()`;
     try {
-      const result = await wc.executeJavaScript(script);
+      const result = await view.webContents.executeJavaScript(
+        buildSelectScript({ selector, value, label }),
+      );
       return result === true;
     } catch {
       return false;
@@ -572,14 +530,7 @@ export class BrowserController {
     const target = await this.debuggerScheduler.acquire(threadId, tabId);
     if (!target) return false;
     try {
-      const result = await target.sendCommand("Input.dispatchMouseEvent", {
-        type: "mouseWheel",
-        x: 0,
-        y: 0,
-        deltaX,
-        deltaY,
-      });
-      return result.ok;
+      return await dispatchScroll(target, deltaX, deltaY);
     } finally {
       this.debuggerScheduler.release(threadId, tabId);
     }
