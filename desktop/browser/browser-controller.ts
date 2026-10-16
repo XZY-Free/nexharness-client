@@ -62,6 +62,7 @@ import type { BrowserNavAction } from "./nav-actions";
 import { PageInsightsStore } from "./page-insights-store";
 import { checkUrlSafety } from "./permission-policy";
 import type { PermissionType } from "./permission-policy";
+import { SCREENSHOT_FILE_MODE, normalizeScreenshotFormat, screenshotFilePath } from "./screenshot";
 import { SessionManager } from "./session-manager";
 import { capturePageSnapshot } from "./snapshot";
 import { decideCloseTab } from "./tab-lifecycle";
@@ -400,15 +401,11 @@ export class BrowserController {
     if (!view) {
       throw new Error(`tab ${tabId} 不存在`);
     }
-    const wc = view.webContents;
-    const image = await wc.capturePage();
-    const ext = format === "jpeg" ? "jpg" : "png";
-    const filename = `screenshot-${threadId}-${tabId}-${Date.now()}.${ext}`;
-    const filepath = path.join(os.tmpdir(), filename);
-    const buffer = format === "jpeg" ? image.toJPEG(80) : image.toPNG();
-    // mode 0600：仅 owner 可读写，防止本机其他用户读取截图内容
-    await fs.promises.writeFile(filepath, buffer, { mode: 0o600 });
-    // Phase 7-6：注册到 registry，由 closeThread / before-quit / 上传成功后清理
+    const image = await view.webContents.capturePage();
+    const filepath = screenshotFilePath({ threadId, tabId, format, now: Date.now() });
+    const buffer = normalizeScreenshotFormat(format) === "jpeg" ? image.toJPEG(80) : image.toPNG();
+    // mode 0600（SCREENSHOT_FILE_MODE）：仅 owner 可读写，防本机其他用户读取截图内容
+    await fs.promises.writeFile(filepath, buffer, { mode: SCREENSHOT_FILE_MODE });
     this.tempFileRegistry.register(threadId, filepath, "screenshot");
     return filepath;
   }
