@@ -216,3 +216,25 @@ export function dispatchNavAction(
       return { acted: false, markLoading: false };
   }
 }
+
+// ─── 创建时的 URL 守卫（从 createTab 抽出）──────────────────────────
+
+/** URL 守卫结果。 */
+export type UrlGuardResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * createTab 的 URL 守卫：空 URL 允许（新空白标签页），非空须过 checkUrlSafety。
+ *
+ * 与 `will-navigate` 的拦截口径一致（同一 `checkUrlSafety`），
+ * 但这里是**创建入口**：被阻止时抛出而非静默忽略（调用方能立刻感知）。
+ *
+ * @param url 待打开的 URL
+ * @param isBlocked 注入的 URL 安全检查（默认 checkUrlSafety）
+ */
+export function guardCreateUrl(url: string, isBlocked: (url: string) => boolean): UrlGuardResult {
+  if (url.length === 0) return { ok: true };
+  if (isBlocked(url)) return { ok: false, reason: `URL 被阻止: ${url}` };
+  return { ok: true };
+}

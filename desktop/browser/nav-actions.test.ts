@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_URL_LENGTH,
   dispatchNavAction,
+  guardCreateUrl,
   isValidNavUrl,
   normalizeUrl,
   validateNavAction,
@@ -210,5 +211,36 @@ describe("dispatchNavAction — 分发与可执行性判定", () => {
     const r = dispatchNavAction(t, { type: "navigate" });
     expect(r.url).toBe("");
     expect(t.calls).toEqual(["loadURL:"]);
+  });
+});
+
+describe("guardCreateUrl — 创建时 URL 守卫", () => {
+  const blocked = (u: string) => u.startsWith("javascript:") || u.startsWith("file:");
+
+  it("空 URL → 允许（新建空白标签页）", () => {
+    expect(guardCreateUrl("", blocked)).toEqual({ ok: true });
+  });
+
+  it("安全 URL → 允许", () => {
+    expect(guardCreateUrl("https://nex.example.com/a", blocked)).toEqual({ ok: true });
+  });
+
+  it("被阻止的 URL → 拒绝并带原因", () => {
+    const r = guardCreateUrl("javascript:alert(1)", blocked);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.reason).toContain("javascript:alert(1)");
+  });
+
+  it("file: 协议同样被阻止（防本地文件访问）", () => {
+    expect(guardCreateUrl("file:///etc/passwd", blocked).ok).toBe(false);
+  });
+
+  it("空 URL 不触发检查（不为空才检查，省一次调用）", () => {
+    let called = 0;
+    guardCreateUrl("", () => {
+      called += 1;
+      return true;
+    });
+    expect(called).toBe(0);
   });
 });

@@ -56,6 +56,7 @@ import { ensureMonitoringFor, monitoringKey, releaseMonitoringFor } from "./moni
 import {
   type NavTargetLike,
   dispatchNavAction,
+  guardCreateUrl,
   normalizeUrl,
   validateNavAction,
 } from "./nav-actions";
@@ -240,13 +241,9 @@ export class BrowserController {
     userId?: string,
     opts?: { incognito?: boolean; tabId?: string; activate?: boolean },
   ): TabMetadata {
-    // 安全检查 URL
-    if (url.length > 0) {
-      const safety = checkUrlSafety(url);
-      if (safety === "blocked") {
-        throw new Error(`URL 被阻止: ${url}`);
-      }
-    }
+    // URL 守卫（空 URL 允许；非空须过 checkUrlSafety，见 nav-actions#guardCreateUrl）
+    const guard = guardCreateUrl(url, (u) => checkUrlSafety(u) === "blocked");
+    if (!guard.ok) throw new Error(guard.reason);
 
     // 创建 tab 元数据
     const tab = this.tabStore.createTab(threadId, url, opts);
