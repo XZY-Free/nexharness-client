@@ -30,3 +30,6 @@ jobs:
       # 桌面构建链验证：renderer 构建 + 主进程/预加载类型检查（完整 electron-builder 打包本地/发布时跑）。
       - run: pnpm build:desktop-renderer
       - run: pnpm exec tsc -p desktop/tsconfig.json --noEmit
+      # 真实 Electron 行为测试（browser-controller 的 view 生命周期 / Session 隔离等）。
+      # 注意：需剔除 ELECTRON_RUN_AS_NODE（GitHub Actions 里未设置，但本地 WorkBuddy 会注入）。
+      - run: pnpm test:electron
