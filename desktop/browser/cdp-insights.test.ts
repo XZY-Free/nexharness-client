@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCdpEvent } from "./cdp-insights";
+import { dispatchCdpInsight, normalizeCdpEvent } from "./cdp-insights";
 
 /**
  * normalizeCdpEvent 把原始 CDP 事件归一为 Store 动作。
@@ -144,5 +144,89 @@ describe("normalizeCdpEvent — 健壮性", () => {
     expect(() => normalizeCdpEvent("Runtime.consoleAPICalled", null)).not.toThrow();
     expect(() => normalizeCdpEvent("Runtime.consoleAPICalled", undefined)).not.toThrow();
     expect(normalizeCdpEvent("Runtime.exceptionThrown", null).type).toBe("console");
+  });
+});
+
+describe("dispatchCdpInsight — 事件路由", () => {
+  function fakeSink() {
+    const log = [];
+    return {
+      log,
+      addConsoleEntry: (t, tab, entry) => log.push(`console:${t}:${tab}`),
+      bufferNetworkRequest: (t, tab, id) => log.push(`req:${id}`),
+      bufferNetworkResponse: (t, tab, id) => log.push(`res:${id}`),
+      finalizeNetworkEntry: (t, tab, id) => log.push(`fin:${id}`),
+      failNetworkEntry: (t, tab, id) => log.push(`fail:${id}`),
+    };
+  }
+
+  it("未知方法 → 不写任何 sink 且返回 false（静默跳过）", () => {
+    const sink = fakeSink();
+    expect(dispatchCdpInsight("Unknown.method", {}, "t", "tab", sink)).toBe(false);
+    expect(sink.log).toEqual([]);
+  });
+
+  it("consoleAPICalled → addConsoleEntry", () => {
+    const sink = fakeSink();
+    const ok = dispatchCdpInsight(
+      "Runtime.consoleAPICalled",
+      { type: "log", args: [{ value: "hi" }], stackTrace: { callFrames: [] } },
+      "t1",
+      "tab1",
+      sink,
+    );
+    expect(ok).toBe(true);
+    expect(sink.log).toEqual(["console:t1:tab1"]);
+  });
+
+  it("缺 requestId 的 Network 事件 → ignore（不写 sink）", () => {
+    const sink = fakeSink();
+    expect(dispatchCdpInsight("Network.requestWillBeSent", { request: {} }, "t", "tab", sink)).toBe(
+      false,
+    );
+    expect(sink.log).toEqual([]);
+  });
+
+  it("Network.requestWillBeSent（含 requestId）→ bufferNetworkRequest", () => {
+    const sink = fakeSink();
+    dispatchCdpInsight(
+      "Network.requestWillBeSent",
+      { requestId: "r1", request: { url: "https://x", method: "GET" } },
+      "t",
+      "tab",
+      sink,
+    );
+    expect(sink.log).toEqual(["req:r1"]);
+  });
+
+  it("Network.responseReceived → bufferNetworkResponse", () => {
+    const sink = fakeSink();
+    dispatchCdpInsight(
+      "Network.responseReceived",
+      { requestId: "r2", response: { status: 200 } },
+      "t",
+      "tab",
+      sink,
+    );
+    expect(sink.log).toEqual(["res:r2"]);
+  });
+
+  it("Network.loadingFinished → finalizeNetworkEntry", () => {
+    const sink = fakeSink();
+    dispatchCdpInsight("Network.loadingFinished", { requestId: "r3" }, "t", "tab", sink);
+    expect(sink.log).toEqual(["fin:r3"]);
+  });
+
+  it("Network.loadingFailed → failNetworkEntry", () => {
+    const sink = fakeSink();
+    dispatchCdpInsight("Network.loadingFailed", { requestId: "r4" }, "t", "tab", sink);
+    expect(sink.log).toEqual(["fail:r4"]);
+  });
+
+  it("ignore 事件不抛错（CDP 流不应因未知方法中断）", () => {
+    const sink = fakeSink();
+    expect(() =>
+      dispatchCdpInsight("Page.frameNavigated", { frame: {} }, "t", "tab", sink),
+    ).not.toThrow();
   });
 });

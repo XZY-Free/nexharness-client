@@ -29,7 +29,7 @@ import type { QaController } from "../qa/qa-controller";
 import { boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
 import type { Bounds, WindowConstraints } from "./bounds-validator";
 import { extractDocumentRootId, extractQueryNodeId, toCdpKeyCode } from "./cdp-input";
-import { normalizeCdpEvent } from "./cdp-insights";
+import { dispatchCdpInsight } from "./cdp-insights";
 import { DebuggerSessionScheduler } from "./debugger-session-scheduler";
 import type { DebuggerSessionTarget } from "./debugger-session-scheduler";
 import { WebContentsDebuggerTarget } from "./debugger-target";
@@ -759,29 +759,8 @@ export class BrowserController {
    * 仅在 debugger attached 时触发（handler 始终注册但 dormant）。
    */
   private handleCdpEvent(threadId: ThreadId, tabId: TabId, method: string, params: unknown): void {
-    const insight = normalizeCdpEvent(method, params);
-    if (insight.type === "ignore") return;
-
-    if (insight.type === "console") {
-      this.pageInsightsStore.addConsoleEntry(threadId, tabId, insight.insight.entry);
-      return;
-    }
-
-    const net = insight.insight;
-    switch (net.kind) {
-      case "request":
-        this.pageInsightsStore.bufferNetworkRequest(threadId, tabId, net.requestId, net.params);
-        break;
-      case "response":
-        this.pageInsightsStore.bufferNetworkResponse(threadId, tabId, net.requestId, net.params);
-        break;
-      case "finished":
-        this.pageInsightsStore.finalizeNetworkEntry(threadId, tabId, net.requestId, net.params);
-        break;
-      case "failed":
-        this.pageInsightsStore.failNetworkEntry(threadId, tabId, net.requestId, net.params);
-        break;
-    }
+    // 归一 + 分发见 cdp-insights#dispatchCdpInsight（纯路由，可单测）
+    dispatchCdpInsight(method, params, threadId, tabId, this.pageInsightsStore);
   }
 
   /**

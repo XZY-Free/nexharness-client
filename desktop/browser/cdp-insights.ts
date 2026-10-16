@@ -193,3 +193,56 @@ export function normalizeCdpEvent(method: string, params: unknown): CdpInsight {
       return { type: "ignore" };
   }
 }
+
+// ─── CDP 事件分发（从 browser-controller 抽出）──────────────────────
+
+/** 洞察写入目标（PageInsightsStore 的方法子集）。 */
+export interface InsightsSink {
+  addConsoleEntry(threadId: string, tabId: string, entry: unknown): void;
+  bufferNetworkRequest(threadId: string, tabId: string, requestId: string, params: unknown): void;
+  bufferNetworkResponse(threadId: string, tabId: string, requestId: string, params: unknown): void;
+  finalizeNetworkEntry(threadId: string, tabId: string, requestId: string, params: unknown): void;
+  failNetworkEntry(threadId: string, tabId: string, requestId: string, params: unknown): void;
+}
+
+/**
+ * 把一条原始 CDP 事件分发到 insights sink。
+ *
+ * 抽出价值：原 handleCdpEvent 是"归一 + switch 分发"，属**纯路由**（无 Electron 依赖）。
+ * 现在可单测"哪种事件落到哪个方法"，且 ignore 语义（未知方法静默跳过、不抛）
+ * 由测试固化。
+ *
+ * @returns 是否被处理（false = ignore）
+ */
+export function dispatchCdpInsight(
+  method: string,
+  params: unknown,
+  threadId: string,
+  tabId: string,
+  sink: InsightsSink,
+): boolean {
+  const insight = normalizeCdpEvent(method, params);
+  if (insight.type === "ignore") return false;
+
+  if (insight.type === "console") {
+    sink.addConsoleEntry(threadId, tabId, insight.insight.entry);
+    return true;
+  }
+
+  const net = insight.insight;
+  switch (net.kind) {
+    case "request":
+      sink.bufferNetworkRequest(threadId, tabId, net.requestId, net.params);
+      break;
+    case "response":
+      sink.bufferNetworkResponse(threadId, tabId, net.requestId, net.params);
+      break;
+    case "finished":
+      sink.finalizeNetworkEntry(threadId, tabId, net.requestId, net.params);
+      break;
+    case "failed":
+      sink.failNetworkEntry(threadId, tabId, net.requestId, net.params);
+      break;
+  }
+  return true;
+}
