@@ -31,7 +31,15 @@ export function screenshotExtension(format: string): "jpg" | "png" {
  *
  * 文件名含 threadId/tabId/时间戳：避免不同 tab 相互覆盖，也便于排查。
  * 注意时间戳使文件名不可预测（不作为安全边界，权限才是）。
+ *
+ * 标识符净化：threadId / tabId 来自 RPC 信封，schema 只约束「非空字符串」，
+ * 若含 `/`、`\`、`..` 即可让 `path.join` 逃出临时目录（写入任意路径）。
+ * 因此这里只保留 `[A-Za-z0-9_-]`，其余字符替换为 `_`。
  */
+export function sanitizeFileToken(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
 export function screenshotFilePath(params: {
   readonly threadId: string;
   readonly tabId: string;
@@ -40,6 +48,8 @@ export function screenshotFilePath(params: {
   readonly tmpDir?: string;
 }): string {
   const ext = screenshotExtension(params.format);
-  const filename = `screenshot-${params.threadId}-${params.tabId}-${params.now}.${ext}`;
+  const filename = `screenshot-${sanitizeFileToken(params.threadId)}-${sanitizeFileToken(
+    params.tabId,
+  )}-${params.now}.${ext}`;
   return path.join(params.tmpDir ?? os.tmpdir(), filename);
 }

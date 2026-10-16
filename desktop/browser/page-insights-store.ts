@@ -42,6 +42,17 @@ interface BufferedNetworkEntry {
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
 /**
+ * 单 tab 的缓冲上限（有界窗口，超出丢最旧）。
+ *
+ * 查询侧上限（DEFAULT_LIMITS.maxConsoleEntries / maxNetworkEntries = 50，
+ * zod 允许最大 200）只约束**读取**，不约束缓冲——长会话里页面持续输出 console
+ * 或发起请求时，缓冲会单调增长直到 tab 关闭，导致主进程内存持续抬升。
+ * 这里按「单次查询可能取到的最大量」留足余量（200 × 4）后封顶。
+ */
+export const MAX_BUFFERED_CONSOLE_PER_TAB = 800;
+export const MAX_BUFFERED_NETWORK_PER_TAB = 800;
+
+/**
  * 页面洞察缓冲存储。
  *
  * 管理 Console 和 Network 事件的内存缓冲，按 threadId+tabId 隔离。
@@ -53,7 +64,7 @@ export class PageInsightsStore {
   // ── Console ──
 
   /**
-   * 追加 Console 条目到指定 tab 的缓冲。
+   * 追加 Console 条目到指定 tab 的缓冲（有界：超上限丢最旧，保留时序尾段）。
    */
   addConsoleEntry(threadId: string, tabId: string, entry: ConsoleEntry): void {
     const key = this.key(threadId, tabId);
@@ -63,6 +74,9 @@ export class PageInsightsStore {
       this.consoleByTab.set(key, entries);
     }
     entries.push(entry);
+    if (entries.length > MAX_BUFFERED_CONSOLE_PER_TAB) {
+      entries.splice(0, entries.length - MAX_BUFFERED_CONSOLE_PER_TAB);
+    }
   }
 
   /**
@@ -93,6 +107,8 @@ export class PageInsightsStore {
 
   /**
    * 缓冲 Network.requestWillBeSent 事件（请求发起）。
+   *
+   * 有界：超上限时淘汰**最早发起**的条目（Map 插入序），避免长会话持续增长。
    */
   bufferNetworkRequest(
     threadId: string,
@@ -110,6 +126,11 @@ export class PageInsightsStore {
     if (!tabNetwork) {
       tabNetwork = new Map();
       this.networkByTab.set(key, tabNetwork);
+    }
+    // 已存在则覆盖（同 requestId 重发），不计入容量
+    if (!tabNetwork.has(requestId) && tabNetwork.size >= MAX_BUFFERED_NETWORK_PER_TAB) {
+      const oldestKey = tabNetwork.keys().next().value;
+      if (oldestKey !== undefined) tabNetwork.delete(oldestKey);
     }
     tabNetwork.set(requestId, {
       requestId,

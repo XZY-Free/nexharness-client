@@ -96,14 +96,22 @@ export interface BrowserControllerConfig {
  */
 /**
  * 下载 URL 到本地临时文件（流式；见 file-upload#downloadUrlToFileImpl）。
+ *
+ * allowedOrigins 非空时限定下载来源；maxBytes 默认由 downloadUrlToFileImpl 提供。
  */
-async function downloadUrlToFile(url: string, dest: string): Promise<boolean> {
+async function downloadUrlToFile(
+  url: string,
+  dest: string,
+  options?: { allowedOrigins?: readonly string[]; maxBytes?: number },
+): Promise<boolean> {
   return downloadUrlToFileImpl({
     url,
     dest,
     createWriteStream: (d) => fs.createWriteStream(d),
     fromWeb: (s) => Readable.fromWeb(s as unknown as import("stream/web").ReadableStream),
     pipeline: (src, d) => pipeline(src, d as unknown as import("node:fs").WriteStream),
+    allowedOrigins: options?.allowedOrigins,
+    maxBytes: options?.maxBytes,
   });
 }
 
@@ -121,21 +129,21 @@ export class BrowserController {
   private lastBounds = new Map<string, Bounds>();
   private window: BrowserWindow | null = null;
   private config: BrowserControllerConfig;
-  /** Phase 7-1：下载记录管理器（由 main/index.ts 注入，可能为 null 表示未启用） */
+  /** 下载记录管理器（由 main/index.ts 注入，可能为 null 表示未启用） */
   private downloadManager: DownloadManager | null = null;
-  /** Phase 7-1：下载上传配置（serverOrigin + 可选 authToken） */
+  /** 下载上传配置（serverOrigin + 可选 authToken） */
   private downloadUploadConfig: UploadConfig | null = null;
-  /** Phase 7-1：webContents.id → (threadId, tabId) 反向索引，用于 will-download 事件归属 */
+  /** webContents.id → (threadId, tabId) 反向索引，用于 will-download 事件归属 */
   private webContentsIndex = new Map<number, { threadId: ThreadId; tabId: TabId }>();
-  /** Phase 7-1：已注册 will-download handler 的 Session 集合（去重，避免重复监听） */
+  /** 已注册 will-download handler 的 Session 集合（去重，避免重复监听） */
   private registeredDownloadSessions = new Set<Session>();
-  /** Phase 7-3：页面洞察缓冲（Console / Network 事件按 thread+tab 隔离） */
+  /** 页面洞察缓冲（Console / Network 事件按 thread+tab 隔离） */
   private pageInsightsStore = new PageInsightsStore();
-  /** Phase 7-3：已启用 Runtime+Network 监控的 tab 集合（"threadId:tabId"），持有 debugger ref 防止 detach */
+  /** 已启用 Runtime+Network 监控的 tab 集合（"threadId:tabId"），持有 debugger ref 防止 detach */
   private monitoringRefs = new Set<string>();
-  /** Phase 7-6：临时文件注册表，跟踪 screenshot/download 待清理的本机文件 */
+  /** 临时文件注册表，跟踪 screenshot/download 待清理的本机文件 */
   private tempFileRegistry = new TempFileRegistry();
-  /** Phase 8：隐藏 QA WebContents 控制器（可选注入，closeThread 时联动清理） */
+  /** 隐藏 QA WebContents 控制器（可选注入，closeThread 时联动清理） */
   private qaController: QaController | null = null;
   private restoringThreads = new Set<ThreadId>();
   private inputBlockedThreads = new Set<ThreadId>();
@@ -182,7 +190,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-1：注入 DownloadManager。
+   * 注入 DownloadManager。
    *
    * 注入后 BrowserController 会监听 Session 的 will-download 事件，
    * 自动捕获下载并跟踪进度，完成后流式上传到 Server workspace。
@@ -192,7 +200,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-1：配置下载上传参数。
+   * 配置下载上传参数。
    *
    * 下载完成后使用此配置调用 uploadFileToWorkspace 将本机文件上传到 Server。
    * 未配置时下载仍会被捕获并记录，但不会自动上传。
@@ -202,7 +210,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 8：注入 QaController（可选）。
+   * 注入 QaController（可选）。
    *
    * 注入后 closeThread 会联动调用 qaController.closeThread，
    * 确保 thread 关闭时隐藏 QA WebContents 和临时 session partition 被清理。
@@ -212,7 +220,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-1：列出 Thread 的下载记录。
+   * 列出 Thread 的下载记录。
    *
    * 委托给 DownloadManager.listDownloads，按 createdAt 降序返回。
    * DownloadManager 未注入时返回空数组。
@@ -386,10 +394,10 @@ export class BrowserController {
   /**
    * 截图并保存到临时文件（mode 0600，限制仅 owner 可读写）。
    *
-   * Phase 7-3：临时文件使用 0600 权限（"加密"实践——限制本机其他用户读取）。
+   * 临时文件使用 0600 权限（"加密"实践——限制本机其他用户读取）。
    * 需要成为 Thread Artifact 时通过 uploadArtifact 上传到 Server。
    *
-   * Phase 7-6：写入后注册到 tempFileRegistry，使 closeThread / 进程退出能兜底清理
+   * 写入后注册到 tempFileRegistry，使 closeThread / 进程退出能兜底清理
    * 即使上传链路未触发或失败也不会留下孤儿文件。
    *
    * @param format - 'png' 或 'jpeg'
@@ -410,7 +418,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-6：上传成功后清理本地临时文件。
+   * 上传成功后清理本地临时文件。
    *
    * 由 uploadDownload 等上传路径调用——unlink 成功后从 registry 注销条目。
    * unlink 失败（权限不足、文件被占用等）不抛——registry 条目保留以便 closeThread 重试。
@@ -533,7 +541,7 @@ export class BrowserController {
   }
 
   /**
-   * 上传工作区文件到 file input（Phase 7-2：通过 downloadUrl 下载到临时目录）。
+   * 上传工作区文件到 file input（通过 downloadUrl 下载到临时目录）。
    *
    * 流程：
    * 1. 使用 HTTP GET 下载 downloadUrl 指向的文件到临时目录（os.tmpdir）
@@ -557,7 +565,10 @@ export class BrowserController {
     // 编排（下载 → 定位 → 设文件 → 清理）见 file-upload#uploadWorkspaceFileWith
     return uploadWorkspaceFileWith(selector, downloadUrl, {
       makeTempPath: () => path.join(os.tmpdir(), `nexharness-upload-${randomUUID()}`),
-      downloadToFile: (url, dest) => downloadUrlToFile(url, dest),
+      // 下载来源限定为受信任 Server origin（downloadUrl 由 Server 签发），
+      // 并受 file-upload#MAX_DOWNLOAD_BYTES 字节上限约束。
+      downloadToFile: (url, dest) =>
+        downloadUrlToFile(url, dest, { allowedOrigins: this.config.serverOrigins }),
       acquire: () => this.debuggerScheduler.acquire(threadId, tabId),
       release: () => this.debuggerScheduler.release(threadId, tabId),
       unlink: async (filePath) => {
@@ -588,7 +599,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-3：获取页面的完整可访问性树。
+   * 获取页面的完整可访问性树。
    *
    * 使用 CDP Accessibility.getFullAXTree 获取结构化 AX 节点。
    */
@@ -609,7 +620,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-3：获取缓冲的 Console 条目。
+   * 获取缓冲的 Console 条目。
    *
    * 首次调用时启用 Runtime+Network 域并持有 debugger ref（持续缓冲事件）。
    * 后续调用直接返回缓冲数据。
@@ -629,7 +640,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-3：获取缓冲的 Network 条目。
+   * 获取缓冲的 Network 条目。
    *
    * 首次调用时启用 Runtime+Network 域并持有 debugger ref（持续缓冲事件）。
    * body 始终为 null（body 需通过 Artifact 流程单独获取）。
@@ -649,7 +660,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-3：确保指定 tab 的 Runtime+Network 监控已启用。
+   * 确保指定 tab 的 Runtime+Network 监控已启用。
    *
    * 首次调用时：
    * 1. acquire debugger session（attach）
@@ -671,7 +682,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-3：释放指定 tab 的监控 ref。
+   * 释放指定 tab 的监控 ref。
    *
    * 在 closeTab 时调用，释放 ensureMonitoring 持有的 debugger ref。
    */
@@ -762,7 +773,7 @@ export class BrowserController {
   /**
    * 关闭 Thread 的所有 tabs 并清理该 Thread 的本地资源。
    *
-   * Phase 7-6：清理该 Thread 的所有本地临时文件（screenshot + 待上传 download）。
+   * 清理该 Thread 的所有本地临时文件（screenshot + 待上传 download）。
    * 注意 cleanupThreadTempFiles 是异步的，但 closeThread 本身同步返回——
    * 文件清理在后台执行，不阻塞 closeThread 完成信号。失败仅记录不抛。
    */
@@ -796,7 +807,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 7-6：清理所有 Thread 的本地临时文件（用于进程退出兜底）。
+   * 清理所有 Thread 的本地临时文件（用于进程退出兜底）。
    *
    * 由 app.on("before-quit") 调用——尽量在退出前清理所有未跟踪的孤儿文件。
    * 不抛错——清理失败仅静默忽略，进程仍正常退出。
@@ -836,7 +847,7 @@ export class BrowserController {
   }
 
   /**
-   * Phase 8：获取 SessionManager 实例（供 logout 流程枚举已注册 userId）。
+   * 获取 SessionManager 实例（供 logout 流程枚举已注册 userId）。
    *
    * SessionManager 维护 userId → partition 的内存映射，
    * logout 时遍历所有 userId 清理对应的 Browser Profile 持久化数据。

@@ -218,6 +218,58 @@ describe("registerWebContentsHandlers — 安全默认（fail-closed）", () => 
     expect(prevented).toBe(true);
   });
 
+  it("非 http/https 的外部协议一律拦截（mailto/tel/custom 不得留在本窗口）", () => {
+    const { wc, emit } = fakeWebContents();
+    const d = fakeDeps();
+    registerWebContentsHandlers(wc, d.deps);
+    for (const url of ["mailto:a@b.com", "tel:+8613800000000", "custom://x", "file:///etc"]) {
+      let prevented = false;
+      emit(
+        "will-navigate",
+        {
+          preventDefault: () => {
+            prevented = true;
+          },
+        },
+        url,
+      );
+      expect(prevented, `未拦截 ${url}`).toBe(true);
+    }
+  });
+
+  it("will-frame-navigate 同样拦截外部协议", () => {
+    const { wc, emit } = fakeWebContents();
+    const d = fakeDeps();
+    registerWebContentsHandlers(wc, d.deps);
+    let prevented = false;
+    emit("will-frame-navigate", {
+      url: "mailto:a@b.com",
+      preventDefault: () => {
+        prevented = true;
+      },
+    });
+    expect(prevented).toBe(true);
+  });
+
+  it("http/https 仍按 checkUrlSafety 放行（不放宽既有行为）", () => {
+    const { wc, emit } = fakeWebContents();
+    const d = fakeDeps();
+    registerWebContentsHandlers(wc, d.deps);
+    for (const url of ["https://nex.example.com/a", "http://localhost:3000/x"]) {
+      let prevented = false;
+      emit(
+        "will-navigate",
+        {
+          preventDefault: () => {
+            prevented = true;
+          },
+        },
+        url,
+      );
+      expect(prevented, `误拦 ${url}`).toBe(false);
+    }
+  });
+
   it("权限请求经 decidePermission 决定（未知权限默认拒绝）", () => {
     const { wc, callPermission } = fakeWebContents();
     const d = fakeDeps();

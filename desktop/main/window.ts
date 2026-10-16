@@ -6,8 +6,14 @@ import * as path from "node:path";
  * - contextIsolation: true（renderer 与 preload 上下文隔离）
  * - sandbox: true（preload 运行在受限沙箱，无 Node API 泄漏）
  * - nodeIntegration: false（renderer 无 Node API）
- * - webSecurity: true（同源策略 + https 强制）
+ * - webSecurity: true（浏览器同源策略生效）
  * - allowRunningInsecureContent: false（不允许 http 子资源）
+ *
+ * 关于「https 强制」：`webSecurity` 只保证同源策略，**不等于**强制 https。
+ * 页面自身始终来自本机 loopback（http://127.0.0.1:随机端口），
+ * 而受信任的 Server origin 是否允许明文 http 由 origin-guard 独立判定
+ * （默认只允许 localhost 的 http；仅当显式 opt-in `NEX_ALLOW_INSECURE_REMOTE_ORIGIN`
+ * 时才放行公网 http 部署）。
  *
  * 导航拦截：
  * - will-navigate：只允许本机 renderer origin，挡外部跳转。
@@ -46,15 +52,15 @@ export function createMainWindow(rendererOrigin: string): BrowserWindow {
     minHeight: 700,
     // macOS 沉浸式标题栏（红绿灯按钮内嵌）
     titleBarStyle: "hiddenInset",
-    // 红绿灯定位：与 W2-2 的 38px 标题栏视觉居中对齐（初值 16/14，方案允许 ±2px 调优）
+    // 红绿灯定位：与 的 38px 标题栏视觉居中对齐（初值 16/14，方案允许 ±2px 调优）
     trafficLightPosition: { x: 16, y: 14 },
     // 窗口图标：macOS 由 .app bundle 的 icns 决定（icon 参数仅 Windows/Linux 有效），
     // 且 Electron nativeImage 不支持 ic12/PNG 编码的新版 icns 解码——macOS 下不传。
     // 非 mac 平台打包时若窗口图标生效，需提供 PNG/ICO 格式文件。
     ...(process.platform === "darwin" ? {} : { icon: path.join(__dirname, "../app-icon.icns") }),
-    // W3-1：Desktop 切换为浅色默认主题，背景色同步改为浅色 --background 等值（#ffffff），
+    // Desktop 切换为浅色默认主题，背景色同步改为浅色 --background 等值（#ffffff），
     // 消除启动/刷新瞬间"黑闪"；最终值由 globals.css 的 :root --background 决定。
-    // W3-6：vibrancy 评估性实验（macOS sidebar 毛玻璃），效果待用户确认后决定去留。
+    // vibrancy 评估性实验（macOS sidebar 毛玻璃），效果待用户确认后决定去留。
     backgroundColor: "#ffffff",
     vibrancy: "sidebar",
     webPreferences: {

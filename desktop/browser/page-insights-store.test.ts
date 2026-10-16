@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PageInsightsStore } from "./page-insights-store";
+import {
+  MAX_BUFFERED_CONSOLE_PER_TAB,
+  MAX_BUFFERED_NETWORK_PER_TAB,
+  PageInsightsStore,
+} from "./page-insights-store";
 
 /**
  * PageInsightsStore 是 Console/Network 洞察缓冲（纯逻辑）。
@@ -162,5 +166,61 @@ describe("PageInsightsStore — 清理（防内存泄漏）", () => {
     s.clearThread("t1");
     expect(s.consoleCount("t1", "tab")).toBe(0);
     expect(s.consoleCount("t10", "tab")).toBe(1); // 前缀匹配用 "t1:" 避免误伤
+  });
+});
+
+/**
+ * 有界窗口（防内存泄漏）。查询侧的 limit 只约束**读取**，不约束缓冲；
+ * 长会话里页面持续输出 console / 发起请求时缓冲会单调增长。
+ */
+describe("PageInsightsStore — 缓冲有界（防内存泄漏）", () => {
+  it("Console 条目超过上限时丢最旧，保留时序尾段", () => {
+    const s = new PageInsightsStore();
+    const total = MAX_BUFFERED_CONSOLE_PER_TAB + 20;
+    for (let i = 0; i < total; i++) {
+      s.addConsoleEntry("t", "tab", { level: "log", text: `m${i}` });
+    }
+    expect(s.consoleCount("t", "tab")).toBe(MAX_BUFFERED_CONSOLE_PER_TAB);
+    // 尾部保留最新的那批
+    const all = s.getConsoleEntries("t", "tab", undefined, MAX_BUFFERED_CONSOLE_PER_TAB);
+    expect(all[all.length - 1]?.text).toBe(`m${total - 1}`);
+    // 最旧的已被淘汰
+    expect(all[0]?.text).toBe(`m${total - MAX_BUFFERED_CONSOLE_PER_TAB}`);
+  });
+
+  it("Network 条目超过上限时淘汰最早发起的请求", () => {
+    const s = new PageInsightsStore();
+    const total = MAX_BUFFERED_NETWORK_PER_TAB + 20;
+    for (let i = 0; i < total; i++) {
+      s.bufferNetworkRequest("t", "tab", `req${i}`, {
+        url: `https://x/${i}`,
+        method: "GET",
+        timestamp: i,
+      });
+    }
+    expect(s.networkCount("t", "tab")).toBe(MAX_BUFFERED_NETWORK_PER_TAB);
+  });
+
+  it("同 requestId 覆盖不占额外容量", () => {
+    const s = new PageInsightsStore();
+    s.bufferNetworkRequest("t", "tab", "same", { url: "https://x", method: "GET", timestamp: 1 });
+    for (let i = 0; i < MAX_BUFFERED_NETWORK_PER_TAB * 2; i++) {
+      s.bufferNetworkRequest("t", "tab", "same", {
+        url: "https://x",
+        method: "GET",
+        timestamp: i,
+      });
+    }
+    expect(s.networkCount("t", "tab")).toBe(1);
+  });
+
+  it("不同 tab 各自独立计数上限", () => {
+    const s = new PageInsightsStore();
+    for (let i = 0; i < MAX_BUFFERED_CONSOLE_PER_TAB + 5; i++) {
+      s.addConsoleEntry("t", "a", { level: "log", text: `x${i}` });
+      s.addConsoleEntry("t", "b", { level: "log", text: `y${i}` });
+    }
+    expect(s.consoleCount("t", "a")).toBe(MAX_BUFFERED_CONSOLE_PER_TAB);
+    expect(s.consoleCount("t", "b")).toBe(MAX_BUFFERED_CONSOLE_PER_TAB);
   });
 });

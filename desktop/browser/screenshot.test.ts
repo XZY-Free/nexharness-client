@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SCREENSHOT_FILE_MODE,
   normalizeScreenshotFormat,
+  sanitizeFileToken,
   screenshotExtension,
   screenshotFilePath,
 } from "./screenshot";
@@ -88,5 +89,57 @@ describe("screenshotFilePath", () => {
     const p = screenshotFilePath({ threadId: "t", tabId: "x", format: "png", now: 1 });
     expect(p.startsWith("/")).toBe(true);
     expect(p).toContain("screenshot-t-x-1.png");
+  });
+});
+
+/**
+ * 路径穿越防护。threadId / tabId 来自 RPC 信封，schema 只约束「非空字符串」——
+ * 若含 `/`、`\` 或 `..`，path.join 会逃出临时目录写到任意路径。**安全关键**。
+ */
+describe("sanitizeFileToken — 标识符净化（安全关键）", () => {
+  it("保留合法字符 [A-Za-z0-9_-]", () => {
+    expect(sanitizeFileToken("Abc-123_x")).toBe("Abc-123_x");
+  });
+
+  it("斜杠 / 反斜杠 / 点 等替换为下划线", () => {
+    // 点号也一并净化（比只删分隔符更严），因此 ".." 变成 "__"
+    expect(sanitizeFileToken("../../etc/passwd")).toBe("______etc_passwd");
+    expect(sanitizeFileToken("a\\b")).toBe("a_b");
+    expect(sanitizeFileToken("a/b")).toBe("a_b");
+    expect(sanitizeFileToken("..")).toBe("__");
+  });
+
+  it("净化后不含任何路径分隔符", () => {
+    for (const evil of ["../x", "..\\x", "/abs", "a/b/c", "~/$HOME"]) {
+      const safe = sanitizeFileToken(evil);
+      expect(safe).not.toContain("/");
+      expect(safe).not.toContain("\\");
+    }
+  });
+});
+
+describe("screenshotFilePath — 不可逃出 tmpDir（安全关键）", () => {
+  it("含 ../ 的 threadId 无法穿越出 tmpDir", () => {
+    const p = screenshotFilePath({
+      threadId: "../../../../etc/cron.d/evil",
+      tabId: "x",
+      format: "png",
+      now: 1,
+      tmpDir: "/tmp",
+    });
+    expect(p.startsWith("/tmp/")).toBe(true);
+    // 净化后文件名内不再有分隔符 → 目录层级不会增加
+    expect(p.split("/").length).toBe(3);
+  });
+
+  it("含 / 的 tabId 同样被限制在 tmpDir 内", () => {
+    const p = screenshotFilePath({
+      threadId: "t",
+      tabId: "a/b",
+      format: "png",
+      now: 1,
+      tmpDir: "/tmp",
+    });
+    expect(p).toBe("/tmp/screenshot-t-a_b-1.png");
   });
 });

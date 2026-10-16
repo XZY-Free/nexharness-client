@@ -11,14 +11,27 @@
  *   （无需真实 Electron）
  * - 也可在真实 Electron 中端到端验证（见 e2e/browser-controller.electron.cjs）
  *
- * 安全口径（与 controller 原实现完全一致，fail-closed）：
+ * 安全口径（fail-closed）：
  * - 弹窗一律 deny（对受信任 origin 由 renderer 处理，不在外部浏览器打开）
  * - 证书错误默认不信任（除非 decideCertificateError 明确 trust）
- * - will-navigate / will-frame-navigate 对 blocked URL 调 preventDefault
+ * - will-navigate / will-frame-navigate：**非 http/https 一律 preventDefault**；
+ *   http/https 再交 checkUrlSafety 判定。外部协议（mailto/tel/custom）默认拒绝——
+ *   它们既不是页面导航目标，也不是本窗口能安全渲染的内容，放行等于让页面在
+ *   WebContentsView 内触发任意系统 handler。
  * - 权限请求按 decidePermission 决定
  */
 import type { PermissionType } from "./permission-policy";
 import { checkUrlSafety, decideCertificateError, decidePermission } from "./permission-policy";
+
+/** 仅 http/https 允许在 WebContentsView 内导航；其余协议（含 mailto/tel/custom）一律拒绝。 */
+function isHttpNavigation(url: string): boolean {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 /** 状态更新负载（与 TabStore.updateTab 的 patch 形状对齐的子集）。 */
 export interface TabStatePatch {
@@ -133,13 +146,17 @@ export function registerWebContentsHandlers(
     callback(decision === "trust");
   }) as never);
 
-  // 导航拦截：主 frame + 子 frame 双覆盖
+  // 导航拦截：主 frame + 子 frame 双覆盖。
+  // 先排除非 http/https（prompt 类外部协议不能留在本窗口内渲染），
+  // 再对 http/https 按 checkUrlSafety 拦截 blocked scheme。
   wc.on("will-navigate", ((event: { preventDefault(): void }, url: string) => {
-    if (checkUrlSafety(url) === "blocked") event.preventDefault();
+    if (!isHttpNavigation(url) || checkUrlSafety(url) === "blocked") event.preventDefault();
   }) as never);
 
   wc.on("will-frame-navigate", ((details: { url: string; preventDefault(): void }) => {
-    if (checkUrlSafety(details.url) === "blocked") details.preventDefault();
+    if (!isHttpNavigation(details.url) || checkUrlSafety(details.url) === "blocked") {
+      details.preventDefault();
+    }
   }) as never);
 
   // CDP 事件（始终注册，仅在 debugger attached 时触发）。

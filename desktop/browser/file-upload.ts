@@ -81,10 +81,47 @@ export async function uploadWorkspaceFileWith(
 }
 
 /**
+ * 单次下载的字节上限（默认 200 MiB）。
+ *
+ * `downloadUrl` 由 Server 签发，但下载目标（远端主机、响应体大小）不受本端控制。
+ * 无上限时一个超大响应即可把磁盘写入到不可预期的规模；这里在流式写入过程中累计
+ * 字节数并硬性中断。
+ */
+export const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
+
+/**
+ * 下载 URL 的 host 白名单校验（可选注入）。
+ *
+ * 传入 allowedOrigins 时，`downloadUrl` 的 origin 必须在列表内；未传则不做 host 约束
+ * （保持现有调用方行为不变，避免单侧收紧把已工作的链路打断）。
+ */
+export function isDownloadUrlAllowed(url: string, allowedOrigins?: readonly string[]): boolean {
+  if (!allowedOrigins || allowedOrigins.length === 0) return true;
+  let target: URL;
+  try {
+    target = new URL(url);
+  } catch {
+    return false;
+  }
+  if (target.protocol !== "http:" && target.protocol !== "https:") return false;
+  return allowedOrigins.some((entry) => {
+    try {
+      return new URL(entry).origin === target.origin;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * 下载 URL 到本地文件（流式写入）。
  *
  * 用 `Readable.fromWeb` 把 fetch 的 Web ReadableStream 转 Node 流后 pipeline，
  * 避免整文件驻留内存。任一步失败返回 false（调用方负责清理部分写入的文件）。
+ *
+ * 加固：
+ * - 先校验响应 `content-length` 与累计字节数均不超过 maxBytes；
+ * - 超限即销毁读取流并返回 false（调用方 unlink 已写入的部分文件）。
  */
 export async function downloadUrlToFileImpl(params: {
   url: string;
@@ -93,13 +130,35 @@ export async function downloadUrlToFileImpl(params: {
   createWriteStream: (dest: string) => NodeJS.WritableStream;
   fromWeb: (stream: unknown) => NodeJS.ReadableStream;
   pipeline: (src: NodeJS.ReadableStream, dest: NodeJS.WritableStream) => Promise<void>;
+  /** 允许的下载来源 origin 白名单；不传则不约束 host。 */
+  allowedOrigins?: readonly string[];
+  /** 字节上限，默认 MAX_DOWNLOAD_BYTES。 */
+  maxBytes?: number;
 }): Promise<boolean> {
+  const maxBytes = params.maxBytes ?? MAX_DOWNLOAD_BYTES;
+  if (!isDownloadUrlAllowed(params.url, params.allowedOrigins)) return false;
   try {
     const response = await (params.fetcher ?? fetch)(params.url);
     if (!response.ok || !response.body) return false;
+    // 声明长度即超限（或非法）→ 不落盘
+    const declared = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > maxBytes) return false;
+
     const nodeStream = params.fromWeb(response.body);
+    let received = 0;
+    let exceeded = false;
+    nodeStream.on("data", (chunk: Buffer | string) => {
+      received += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+      if (received > maxBytes && !exceeded) {
+        exceeded = true;
+        // 中断读取；pipeline 随之以错误结束（被 catch 吞掉并返回 false）
+        (nodeStream as { destroy?: (error?: Error) => void }).destroy?.(
+          new Error("下载超过字节上限"),
+        );
+      }
+    });
     await params.pipeline(nodeStream, params.createWriteStream(params.dest));
-    return true;
+    return !exceeded;
   } catch {
     return false;
   }
