@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_PREFIX = "nexharness:draft:";

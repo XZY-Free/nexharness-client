@@ -3,8 +3,6 @@
  *
  * 只消费服务端规范化 DTO；历史回放只展示，不自动导航或打开外链。
  */
-"use client";
-
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";

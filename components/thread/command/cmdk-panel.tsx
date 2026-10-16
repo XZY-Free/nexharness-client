@@ -1,10 +1,8 @@
-"use client";
-
 import { Dialog, DialogContent, DialogOverlay } from "@/components/ui/dialog";
 import { Command } from "cmdk";
 import { FileSearch, FolderOpen, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface CmdkPanelProps {
   readonly threads: readonly {
@@ -18,7 +16,7 @@ interface CmdkPanelProps {
 
 export function CmdkPanel({ threads, open, onOpenChange, surface = "desktop" }: CmdkPanelProps) {
   const [query, setQuery] = useState("");
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const filteredThreads = useMemo(() => {
     if (!query.trim()) return threads;
@@ -31,15 +29,15 @@ export function CmdkPanel({ threads, open, onOpenChange, surface = "desktop" }: 
   const handleSelectThread = useCallback(
     (threadId: string) => {
       onOpenChange(false);
-      router.push(surface === "desktop" ? `/desktop/chat/${threadId}` : `/chat/${threadId}`);
+      navigate(surface === "desktop" ? `/desktop/chat/${threadId}` : `/chat/${threadId}`);
     },
-    [onOpenChange, router, surface],
+    [onOpenChange, navigate, surface],
   );
 
   const handleNewThread = useCallback(() => {
     onOpenChange(false);
-    router.push(surface === "desktop" ? "/desktop" : "/chat");
-  }, [onOpenChange, router, surface]);
+    navigate(surface === "desktop" ? "/desktop" : "/chat");
+  }, [onOpenChange, navigate, surface]);
 
   // ⌘1~9 快捷键打开对应会话
   useEffect(() => {

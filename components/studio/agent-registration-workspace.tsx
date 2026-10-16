@@ -1,5 +1,3 @@
-"use client";
-
 import { AgentContractRegistrationPanel } from "@/components/studio/agent-contract-registration-panel";
 import { AgentRevisionActions } from "@/components/studio/agent-revision-actions";
 import { AgentsViewer } from "@/components/studio/agents-viewer";

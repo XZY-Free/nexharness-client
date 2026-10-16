@@ -1,5 +1,3 @@
-"use client";
-
 import { useApiData } from "@/components/hooks/use-api-data";
 import { StudioGatePage } from "@/components/studio/gate-page";
 import { SkillCreator } from "@/components/studio/skill-creator";
@@ -8,7 +6,7 @@ import { StudioPage } from "@/components/studio/studio-page";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { Badge } from "@/components/ui/badge";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 /** /studio/api/skills?withSync=1 列表行（wire 形状，仅取展示所需字段）。 */
 interface SkillListWireRow {
@@ -107,7 +105,7 @@ export default function SkillsPage() {
                   <tr key={skill.id} className="transition-colors hover:bg-muted/30">
                     <td className="px-4 py-3.5">
                       <Link
-                        href={`/studio/skills/${skill.id}`}
+                        to={`/studio/skills/${skill.id}`}
                         className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {skill.displayName || skill.skillKey}

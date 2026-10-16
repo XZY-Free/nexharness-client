@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Studio 客户端外壳（消费方模型 v4 · 页面数据 API 化）。
  *

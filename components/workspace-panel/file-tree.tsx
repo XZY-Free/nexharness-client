@@ -1,5 +1,3 @@
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 import { ChevronDown, Folder, FolderOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";

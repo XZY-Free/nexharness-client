@@ -1,5 +1,3 @@
-"use client";
-
 import { Markdown } from "@/components/markdown";
 import { apiPath } from "@/lib/api-fetch";
 import { useEffect, useState } from "react";

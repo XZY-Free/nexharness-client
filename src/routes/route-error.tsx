@@ -1,7 +1,7 @@
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import Link from "@/src/shims/next-link";
 import { ArrowLeft, RefreshCw, TriangleAlert } from "lucide-react";
+import { Link } from "react-router-dom";
 
 /**
  * 路由级错误边界视图。
@@ -32,7 +32,7 @@ export function RouteErrorView() {
             <RefreshCw aria-hidden="true" />
             重新加载
           </Button>
-          <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
+          <Link to="/" className={cn(buttonVariants({ variant: "outline" }))}>
             <ArrowLeft aria-hidden="true" />
             返回首页
           </Link>

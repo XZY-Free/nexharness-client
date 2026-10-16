@@ -1,5 +1,3 @@
-"use client";
-
 import { StudioSettingsRow } from "@/components/studio/studio-settings-section";
 import {
   AlertDialog,
@@ -15,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-fetch";
 import { Unlink } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type SkillSyncMetaProps = {
@@ -51,7 +48,6 @@ export function SkillSyncMeta({
   lastSyncedAt,
   lastError,
 }: SkillSyncMetaProps) {
-  const router = useRouter();
   const [unsyncing, setUnsyncing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +64,7 @@ export function SkillSyncMeta({
         return;
       }
       setConfirmOpen(false);
-      router.refresh();
+      window.location.reload();
     } catch {
       setError("网络连接失败，未停止同步");
     } finally {

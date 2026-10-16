@@ -25,8 +25,6 @@
  *
  * 样式：与 workspace.tsx header 一致（border-b + bg-surface + px-4 py-3.5）。
  */
-"use client";
-
 import { CatalogDisplayName } from "@/components/thread/catalog/catalog-display-name";
 import { deriveTaskStatus } from "@/lib/client/derive-task-status";
 import type { ClientGoal, ClientThread, ClientTurn } from "@/lib/client/types";

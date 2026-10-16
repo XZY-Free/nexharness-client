@@ -33,8 +33,6 @@
  * - requestTakeover 使用 useCallback 稳定引用，避免子组件无限重渲染。
  * - busyRef 同步标志，避免 setState 异步延迟导致重复触发。
  */
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 import { toVisibleError } from "@/lib/client/error-messages";
 import type {

@@ -1,5 +1,3 @@
-"use client";
-
 import { clearStoredThreadDraft } from "@/components/hooks/use-thread-draft";
 import { NewThreadPage } from "@/components/thread/new-thread-page";
 import { DesktopSidebar } from "@/components/thread/sidebar/desktop-sidebar";

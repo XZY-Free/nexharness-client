@@ -17,8 +17,6 @@
  * 引导：PendingInputQueue 的 ↳ 引导 按钮调用本组件的 useTurnControls.steer，
  * 把排队消息升级为对当前 Turn 的即时引导；成功后 PendingInputQueue 自行从队列移除。
  */
-"use client";
-
 import { useThreadDraft } from "@/components/hooks/use-thread-draft";
 import { useThreadInput } from "@/components/hooks/use-thread-input";
 import { useTurnControls } from "@/components/hooks/use-turn-controls";

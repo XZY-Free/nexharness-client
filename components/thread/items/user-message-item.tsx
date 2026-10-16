@@ -6,8 +6,6 @@
  *
  * 样式：右侧气泡（与 chat/message-row.tsx 用户消息一致）。
  */
-"use client";
-
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 

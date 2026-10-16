@@ -1,5 +1,3 @@
-"use client";
-
 import { CodeBlock, Markdown } from "@/components/markdown";
 import { apiFetch } from "@/lib/api-fetch";
 import {

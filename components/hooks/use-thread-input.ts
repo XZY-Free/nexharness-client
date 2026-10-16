@@ -22,8 +22,6 @@
  * }
  * ```
  */
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 import { toVisibleError } from "@/lib/client/error-messages";
 import { uploadThreadAttachment } from "@/lib/client/thread-attachments";

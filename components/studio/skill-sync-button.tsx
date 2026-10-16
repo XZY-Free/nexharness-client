@@ -1,16 +1,12 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-fetch";
 import { RefreshCw } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
  * 从已配置的技能库同步内容。可见性由服务端权限判断。
  */
 export function SkillSyncButton() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Record<string, number> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +33,7 @@ export function SkillSyncButton() {
         失败: d.failed?.length ?? 0,
         远端已下线: d.missing?.length ?? 0,
       });
-      router.refresh();
+      window.location.reload();
     } catch {
       setError("网络连接失败，未能同步技能库");
     } finally {

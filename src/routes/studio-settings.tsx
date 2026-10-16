@@ -1,5 +1,3 @@
-"use client";
-
 import { AppearanceSetting } from "@/components/studio/appearance-setting";
 import { StudioPage } from "@/components/studio/studio-page";
 import {

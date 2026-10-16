@@ -32,8 +32,6 @@
  * }
  * ```
  */
-"use client";
-
 import { useThread } from "@/components/hooks/use-thread";
 import { useThreadDetail } from "@/components/hooks/use-thread-detail";
 import { useThreadSettings } from "@/components/hooks/use-thread-settings";

@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * W3-6：基于 sonner 的 toast 系统。
  *

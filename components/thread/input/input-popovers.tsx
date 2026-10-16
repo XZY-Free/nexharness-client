@@ -1,5 +1,3 @@
-"use client";
-
 import { useAvailableModels } from "@/components/hooks/use-available-models";
 import { useCatalog } from "@/components/hooks/use-catalog";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";

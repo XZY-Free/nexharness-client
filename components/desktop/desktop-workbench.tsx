@@ -1,5 +1,3 @@
-"use client";
-
 import { DesktopBrowserSurface } from "@/components/desktop/desktop-browser-surface";
 import { Button } from "@/components/ui/button";
 import { FileEditor } from "@/components/workspace-panel/file-editor";

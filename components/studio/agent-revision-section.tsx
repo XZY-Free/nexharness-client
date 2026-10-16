@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * AgentRevision 操作入口：选择 Agent 后渲染 AgentRevisionActions。
  */

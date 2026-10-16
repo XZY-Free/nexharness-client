@@ -1,5 +1,3 @@
-"use client";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
 import { FileText, Save, Upload } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Message = { tone: "status" | "error"; text: string };
@@ -30,7 +27,6 @@ export function SkillFileEditor({
   skillName: string;
   canWrite: boolean;
 }) {
-  const router = useRouter();
   const [files, setFiles] = useState<string[]>([]);
   const [current, setCurrent] = useState<string | null>(null);
   const [content, setContent] = useState("");
@@ -125,7 +121,7 @@ export function SkillFileEditor({
       const body = await res.json();
       if (res.ok) {
         setMessage({ tone: "status", text: `版本 ${body.version} 已发布` });
-        router.refresh();
+        window.location.reload();
         await loadFiles();
       } else {
         setMessage({ tone: "error", text: body?.error?.message ?? "发布失败" });

@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Sidebar 收起状态上下文（W3-2）。
  *

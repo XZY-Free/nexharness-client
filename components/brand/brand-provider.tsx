@@ -1,5 +1,3 @@
-"use client";
-
 import { apiFetch, apiPath } from "@/lib/api-fetch";
 /**
  * BrandProvider：Web 侧品牌上下文。

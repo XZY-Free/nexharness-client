@@ -19,8 +19,6 @@
  *
  * 样式：操作卡片（带图标 + 状态 + 按钮）。
  */
-"use client";
-
 import { useUserAction } from "@/components/hooks/use-user-action";
 import type { ClientItem } from "@/lib/client/types";
 import type { UserActionResolution } from "@/lib/server-schema/user-action-request";

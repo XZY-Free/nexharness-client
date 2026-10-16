@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * 运行日志面板（AppRuntime 精简版）。
  *

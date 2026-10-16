@@ -31,8 +31,6 @@
  *
  * 样式：文件卡片（带图标 + 元信息 + 操作按钮）。
  */
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { WorkspaceFileIcon } from "@/components/workspace-panel/workspace-file-icon";
 import type { ClientItem } from "@/lib/client/types";

@@ -22,8 +22,6 @@
  *
  * 不在 Desktop Shell 与 Web 之间区分实现 — 两端共用同一投影。
  */
-"use client";
-
 import {
   type ClientItem,
   type ClientStreamStatus,

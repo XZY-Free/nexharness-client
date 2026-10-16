@@ -1,7 +1,7 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, LockKeyhole } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 export function StudioGatePage({
   status,
@@ -31,7 +31,7 @@ export function StudioGatePage({
           {status} · 无法访问
         </h1>
         <p className="mt-2 text-sm">{message}</p>
-        <Link href="/chat" className={cn(buttonVariants({ variant: "outline" }), "mt-6")}>
+        <Link to="/chat" className={cn(buttonVariants({ variant: "outline" }), "mt-6")}>
           <ArrowLeft aria-hidden="true" />
           返回使用端
         </Link>

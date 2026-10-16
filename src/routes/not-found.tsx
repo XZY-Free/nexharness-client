@@ -1,7 +1,7 @@
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import Link from "@/src/shims/next-link";
 import { ArrowLeft, FileQuestion } from "lucide-react";
+import { Link } from "react-router-dom";
 
 /**
  * 404 视图。
@@ -27,7 +27,7 @@ export function NotFoundView() {
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           页面可能已移动或不再可用。返回后台首页后，可以从左侧菜单重新进入。
         </p>
-        <Link href="/studio" className={cn(buttonVariants({ variant: "outline" }), "mt-6")}>
+        <Link to="/studio" className={cn(buttonVariants({ variant: "outline" }), "mt-6")}>
           <ArrowLeft aria-hidden="true" />
           返回后台首页
         </Link>

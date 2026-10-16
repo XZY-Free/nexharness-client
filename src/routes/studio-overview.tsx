@@ -1,5 +1,3 @@
-"use client";
-
 import { useApiData } from "@/components/hooks/use-api-data";
 import { StudioPage } from "@/components/studio/studio-page";
 import {

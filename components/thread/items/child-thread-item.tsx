@@ -10,8 +10,6 @@
  *
  * 样式：子任务卡片（带图标 + 状态 + 摘要 + 跳转按钮）。
  */
-"use client";
-
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, UsersRound } from "lucide-react";

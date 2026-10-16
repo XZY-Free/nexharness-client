@@ -9,8 +9,6 @@
  * - 点击展开浅灰输出块（bg-muted 圆角 pre：输入 / 输出 / 错误）。
  * - 重卡片只留给行动项（审批/diff），工具调用禁止使用边框卡片。
  */
-"use client";
-
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 import { Check, ChevronRight, CircleAlert, CircleSlash2, LoaderCircle } from "lucide-react";

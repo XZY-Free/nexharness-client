@@ -1,5 +1,3 @@
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 /**
  * 轻量 JSON API 数据钩子（Studio 页面数据 API 化）。

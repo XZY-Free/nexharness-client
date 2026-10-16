@@ -1,5 +1,3 @@
-"use client";
-
 import { Icon } from "@/components/icons";
 import {
   type DesktopBrowserStateUpdate,

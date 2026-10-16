@@ -1,5 +1,3 @@
-"use client";
-
 import { BrandName } from "@/components/brand/brand-wordmark";
 import { CmdkPanel } from "@/components/thread/command/cmdk-panel";
 import {
@@ -26,9 +24,8 @@ import { LogOut, PanelLeft, Plus, Search, User } from "lucide-react";
  *
  * 侧栏可收起（⌘\ 或品牌行按钮），收起后主区左移。
  */
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { type CSSProperties, useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "./sidebar-context";
 
 interface SidebarThread {
@@ -60,7 +57,7 @@ export function DesktopSidebar({
   surface = "desktop",
 }: DesktopSidebarProps) {
   const { collapsed, isNarrow, toggle } = useSidebar();
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const [cmdkOpen, setCmdkOpen] = useState(false);
   const [nativeTitlebar, setNativeTitlebar] = useState(hasNativeTitlebar);
   const [nativeIsFullScreen, setNativeIsFullScreen] = useState<boolean | null>(null);
@@ -151,7 +148,7 @@ export function DesktopSidebar({
   );
   const newThreadButton = (
     <Link
-      href={surface === "desktop" ? "/desktop" : "/chat"}
+      to={surface === "desktop" ? "/desktop" : "/chat"}
       aria-label="新建会话"
       style={nativeNoDragStyle}
       className={titlebarIconClass}
@@ -257,7 +254,7 @@ export function DesktopSidebar({
           {/* 新建会话 */}
           <div className="px-3 py-1 [-webkit-app-region:no-drag]">
             <Link
-              href={surface === "desktop" ? "/desktop" : "/chat"}
+              to={surface === "desktop" ? "/desktop" : "/chat"}
               className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
             >
               <Plus className="size-4 text-muted-foreground" />
@@ -379,7 +376,7 @@ function ThreadListItem({
   const { isNarrow, setCollapsed } = useSidebar();
   return (
     <Link
-      href={surface === "desktop" ? `/desktop/chat/${thread.id}` : `/chat/${thread.id}`}
+      to={surface === "desktop" ? `/desktop/chat/${thread.id}` : `/chat/${thread.id}`}
       onClick={() => {
         if (isNarrow) setCollapsed(true);
       }}

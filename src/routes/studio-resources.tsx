@@ -1,5 +1,3 @@
-"use client";
-
 import { AgentRegistrationWorkspace } from "@/components/studio/agent-registration-workspace";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import {

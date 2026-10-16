@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -17,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch } from "@/lib/api-fetch";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const SKILL_TOOL_OPTIONS = [
@@ -33,7 +30,6 @@ const DEFAULT_SKILL_TOOLS = SKILL_TOOL_OPTIONS.map((tool) => tool.value);
 
 /** 新建技能并生成首个可用版本。 */
 export function SkillCreator() {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -84,7 +80,7 @@ export function SkillCreator() {
       setDescription("");
       setTools(new Set(DEFAULT_SKILL_TOOLS));
       setPromptMd("");
-      router.refresh();
+      window.location.reload();
     } catch {
       setError("网络连接失败，技能未创建");
     } finally {

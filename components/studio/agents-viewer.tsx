@@ -1,11 +1,9 @@
-"use client";
-
 import { AgentDeleteButton } from "@/components/studio/agent-delete-button";
 import { Button } from "@/components/ui/button";
 import { type AgentDTO, createControlPlaneClient } from "@/lib/control-plane-client";
 import { ChevronRight, CircleAlert, LoaderCircle } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const client = createControlPlaneClient({ baseUrl: "", headers: () => ({}) });
 
@@ -137,7 +135,7 @@ export function AgentsViewer({ refreshToken = 0, onManage, canDelete = false }: 
                   </Button>
                 )}
                 <Link
-                  href={`/studio/agents/${agent.id}`}
+                  to={`/studio/agents/${agent.id}`}
                   aria-label={`查看${agent.display_name}详情`}
                   className="inline-flex items-center gap-1 rounded-md px-3 py-2 font-medium hover:bg-muted focus-visible:outline-2"
                 >

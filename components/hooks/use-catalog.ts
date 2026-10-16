@@ -20,8 +20,6 @@
  * const { items, loading, error, refresh } = useCatalog({ resourceTypes: ["agent"] });
  * ```
  */
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 import { toVisibleError } from "@/lib/client/error-messages";
 import type {

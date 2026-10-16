@@ -1,5 +1,3 @@
-"use client";
-
 import { useApiData } from "@/components/hooks/use-api-data";
 import { StudioGatePage } from "@/components/studio/gate-page";
 import { GovernanceEditor } from "@/components/studio/governance-editor";

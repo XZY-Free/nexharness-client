@@ -6,8 +6,6 @@
  *
  * 样式：任务卡片（带图标 + 状态 + 进度条 + 结果摘要）。
  */
-"use client";
-
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";

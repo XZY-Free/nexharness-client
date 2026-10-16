@@ -9,8 +9,6 @@
  *
  * 视觉参数由当前 Desktop 对话样式维护。
  */
-"use client";
-
 import { cn } from "@/lib/utils";
 import { ChevronRight, CircleCheck, LoaderCircle } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";

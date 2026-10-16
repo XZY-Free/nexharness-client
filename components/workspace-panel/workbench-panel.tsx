@@ -1,5 +1,3 @@
-"use client";
-
 import { DesktopBrowserSurface } from "@/components/desktop/desktop-browser-surface";
 /**
  * 三页签工作台（Web 端）。

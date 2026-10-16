@@ -1,5 +1,3 @@
-"use client";
-
 import { apiFetch, apiPath } from "@/lib/api-fetch";
 /**
  * 使用端登录门禁（客户端）。

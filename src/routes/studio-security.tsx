@@ -1,5 +1,3 @@
-"use client";
-
 import { StudioPage } from "@/components/studio/studio-page";
 import {
   StudioSettingsLinkRow,

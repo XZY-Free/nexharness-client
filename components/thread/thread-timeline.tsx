@@ -15,8 +15,6 @@
  * - 超过阈值启用虚拟化（起以"段"为虚拟化单位）；
  * - 流式状态指示（aria-live）；新内容自动滚动到底部。
  */
-"use client";
-
 import type { ActivityEntry } from "@/lib/client/activity-projection";
 import { mergeThinkEntries, projectProgressItem } from "@/lib/client/activity-projection";
 import type { ClientItem, ClientStreamStatus, ClientTurn } from "@/lib/client/types";

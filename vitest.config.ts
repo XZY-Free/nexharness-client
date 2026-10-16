@@ -12,8 +12,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname),
-      "next/link": resolve(__dirname, "src/shims/next-link.tsx"),
-      "next/navigation": resolve(__dirname, "src/shims/next-navigation.ts"),
     },
   },
   test: {

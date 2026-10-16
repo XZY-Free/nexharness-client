@@ -1,5 +1,3 @@
-"use client";
-
 import { useApiData } from "@/components/hooks/use-api-data";
 import { StudioGatePage } from "@/components/studio/gate-page";
 import { PromptDiff } from "@/components/studio/prompt-diff";
@@ -14,7 +12,7 @@ import {
 } from "@/components/studio/studio-settings-section";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
-import { useParams } from "next/navigation";
+import { useParams } from "react-router-dom";
 
 /** GET /studio/api/skills/[id] 响应（wire 形状）。 */
 interface SkillDetailWire {

@@ -1,5 +1,3 @@
-"use client";
-
 import { RuntimeControlPanel } from "@/components/studio/runtime-control-panel";
 import { StudioPage } from "@/components/studio/studio-page";
 import {

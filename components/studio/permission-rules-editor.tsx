@@ -1,5 +1,3 @@
-"use client";
-
 import { Check, LockKeyhole, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 

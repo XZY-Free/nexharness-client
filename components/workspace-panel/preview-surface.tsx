@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Web iframe Preview Surface。
  *

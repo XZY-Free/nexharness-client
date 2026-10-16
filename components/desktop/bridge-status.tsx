@@ -1,5 +1,3 @@
-"use client";
-
 import { getDesktopCapabilities } from "@/lib/desktop/capabilities";
 import { useEffect, useState } from "react";
 

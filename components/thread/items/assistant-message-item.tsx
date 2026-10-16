@@ -8,8 +8,6 @@
  * - 流式中（pending）末尾显示闪烁光标。
  * - 失败显示错误提示行。
  */
-"use client";
-
 import { Markdown } from "@/components/markdown";
 import type { ClientItem } from "@/lib/client/types";
 

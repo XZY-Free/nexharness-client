@@ -29,8 +29,6 @@
  * - 返回的所有方法引用必须稳定（useCallback），避免子组件因 props 变化无限重渲染。
  * - bridge 读取使用 useState + useEffect，避免每次渲染都调用 getDesktopBridge。
  */
-"use client";
-
 import type { DesktopOperationCapability } from "@/lib/client/types";
 import {
   type DesktopAppOpenParams,

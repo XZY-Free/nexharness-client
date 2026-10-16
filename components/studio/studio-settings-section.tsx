@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 type StudioSettingsSectionProps = {
   readonly title: string;
@@ -82,7 +82,7 @@ export function StudioSettingsLinkRow({
 }: StudioSettingsLinkRowProps) {
   return (
     <Link
-      href={href}
+      to={href}
       data-slot="studio-settings-row"
       className={cn(
         "group grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-6 px-4 py-3.5 outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",

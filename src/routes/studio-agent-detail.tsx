@@ -1,5 +1,3 @@
-"use client";
-
 import { StudioGatePage } from "@/components/studio/gate-page";
 import { StudioPage } from "@/components/studio/studio-page";
 import { useStudioContext } from "@/components/studio/studio-shell";
@@ -15,9 +13,8 @@ import {
   ControlPlaneRequestError,
   createControlPlaneClient,
 } from "@/lib/control-plane-client";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 
 const client = createControlPlaneClient({ baseUrl: "", headers: () => ({}) });
 
@@ -158,7 +155,7 @@ export default function AgentDetailsPage() {
         canConfigure ? (
           <Link
             className="rounded-lg bg-foreground px-4 py-2 text-sm text-background"
-            href={`/studio/resources?agent=${id}&step=configure`}
+            to={`/studio/resources?agent=${id}&step=configure`}
           >
             配置智能体
           </Link>
@@ -166,7 +163,7 @@ export default function AgentDetailsPage() {
       }
     >
       <Link
-        href="/studio/resources"
+        to="/studio/resources"
         className="inline-block text-sm text-muted-foreground hover:text-foreground"
       >
         ← 返回智能体列表

@@ -1,5 +1,3 @@
-"use client";
-
 import type { ClientItem } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";

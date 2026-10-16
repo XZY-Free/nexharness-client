@@ -16,9 +16,7 @@
     "incremental": true,
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./*"],
-      "next/link": ["./src/shims/next-link.tsx"],
-      "next/navigation": ["./src/shims/next-navigation.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": ["src", "components", "lib", "vite.config.ts", "vite.desktop.config.ts"],

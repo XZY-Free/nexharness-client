@@ -1,5 +1,3 @@
-"use client";
-
 import { RouteActivationPanel } from "@/components/studio/route-activation-panel";
 import { StudioPage } from "@/components/studio/studio-page";
 import {

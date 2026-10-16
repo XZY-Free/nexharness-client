@@ -1,5 +1,3 @@
-"use client";
-
 import { useThreadSettings } from "@/components/hooks/use-thread-settings";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { apiFetch } from "@/lib/api-fetch";

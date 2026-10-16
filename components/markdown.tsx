@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * V4 Phase D-1：Markdown 渲染 + 代码块语法高亮（shiki）+ 复制按钮。
  *

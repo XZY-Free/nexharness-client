@@ -25,8 +25,6 @@
  * }
  * ```
  */
-"use client";
-
 import { apiFetch } from "@/lib/api-fetch";
 import { toVisibleError } from "@/lib/client/error-messages";
 import type {

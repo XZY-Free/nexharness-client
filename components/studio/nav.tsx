@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 import type { StudioNavVisibility } from "@/lib/studio/nav-visibility";
@@ -18,9 +16,8 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 /**
  * Studio 一级导航（侧栏改版）。
@@ -190,7 +187,7 @@ export function NavClusters({ pathname, groups }: NavClustersProps) {
               return (
                 <Link
                   key={item.id}
-                  href={item.href}
+                  to={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-sidebar-ring/50",
@@ -216,7 +213,7 @@ const BACK_LINK_CLASS =
 
 function BackLink() {
   return (
-    <Link href="/chat" className={BACK_LINK_CLASS}>
+    <Link to="/chat" className={BACK_LINK_CLASS}>
       <ArrowLeft className="size-4" aria-hidden="true" />
       <span>返回使用端</span>
     </Link>
@@ -253,7 +250,7 @@ function RailPanel({ pathname, groups }: NavPanelProps) {
       className="hidden w-14 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-2.5 text-sidebar-foreground md:flex lg:hidden"
     >
       <Link
-        href="/chat"
+        to="/chat"
         title="返回使用端"
         aria-label="返回使用端"
         className="flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
@@ -271,7 +268,7 @@ function RailPanel({ pathname, groups }: NavPanelProps) {
               return (
                 <Link
                   key={item.id}
-                  href={item.href}
+                  to={item.href}
                   title={label}
                   aria-label={label}
                   aria-current={active ? "page" : undefined}
@@ -311,7 +308,7 @@ function MobilePanel({ pathname, groups }: NavPanelProps) {
 }
 
 export function StudioNav({ visibleItems }: StudioNavProps) {
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: pathname 变化是关闭移动抽屉的触发信号

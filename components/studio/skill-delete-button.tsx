@@ -1,5 +1,3 @@
-"use client";
-
 import { useToast } from "@/components/toast";
 import {
   AlertDialog,
@@ -15,8 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-fetch";
 import { Archive } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /** 归档技能；后端保留已有任务和历史版本。 */
 export function SkillDeleteButton({
@@ -26,7 +24,7 @@ export function SkillDeleteButton({
   skillId: string;
   skillName: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -36,8 +34,8 @@ export function SkillDeleteButton({
       const res = await apiFetch(`/studio/api/skills/${skillId}`, { method: "DELETE" });
       if (res.ok) {
         setOpen(false);
-        router.push("/studio/skills");
-        router.refresh();
+        navigate("/studio/skills");
+        window.location.reload();
       } else {
         toast.error("归档失败，请稍后重试");
       }

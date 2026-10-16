@@ -1,5 +1,3 @@
-"use client";
-
 import { useApiData } from "@/components/hooks/use-api-data";
 import { AuditLogTable } from "@/components/studio/audit-log-table";
 import { StudioGatePage } from "@/components/studio/gate-page";

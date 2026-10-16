@@ -12,8 +12,6 @@
  *   不定义任何超时失败（超时判定是服务端 Recovery Authority 的职责）。
  * - 纯当前执行状态 UI：不创建 ThreadItem、不进入会话历史/Context/Memory。
  */
-"use client";
-
 import type { ClientItem, ClientTurn } from "@/lib/client/types";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";

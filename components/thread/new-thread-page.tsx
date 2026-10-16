@@ -1,5 +1,3 @@
-"use client";
-
 import type { ClientNewThreadSubmission } from "@/lib/client/types";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";

@@ -29,8 +29,6 @@
  * />
  * ```
  */
-"use client";
-
 import { usePendingInputs } from "@/components/hooks/use-pending-inputs";
 import {
   DropdownMenu,

@@ -13,8 +13,6 @@
  * <CatalogDisplayName resourceId={thread.primary_agent_id} resourceType="agent" />
  * ```
  */
-"use client";
-
 import { useCatalog } from "@/components/hooks/use-catalog";
 import type { ClientCatalogResourceType } from "@/lib/client/types";
 

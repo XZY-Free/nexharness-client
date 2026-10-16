@@ -1,10 +1,7 @@
-"use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-fetch";
 import { RotateCcw, Send } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type VersionLite = {
@@ -47,7 +44,6 @@ export function SkillVersionTimeline({
   currentVersionId: string | null;
   canWrite?: boolean;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const currentVersion = versions.find((version) => version.id === currentVersionId)?.version;
@@ -61,7 +57,7 @@ export function SkillVersionTimeline({
       setError(`版本 ${version.version} 操作失败：${result.message ?? "请稍后重试"}`);
       return;
     }
-    router.refresh();
+    window.location.reload();
   }
 
   if (versions.length === 0) {
