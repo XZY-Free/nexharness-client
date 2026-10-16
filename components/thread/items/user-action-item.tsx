@@ -21,23 +21,25 @@
  */
 
 import { useUserAction } from "@/components/hooks/use-user-action";
+import { useUserActionForm } from "@/components/hooks/use-user-action-form";
 import type { ClientItem } from "@/lib/client/types";
 import type { UserActionResolution } from "@/lib/server-schema/user-action-request";
 import {
   type InputFieldDef,
-  type NormalizedFieldValue,
   type UserActionContent,
-  extractInputFields,
   isStructuredPreview,
-  normalizeFieldValue,
   previewText,
 } from "@/lib/thread/user-action-fields";
 import {
   formatExpiresAt,
   getRequestTypeLabel,
   getResolutionLabel,
-  previewFieldLabel,
 } from "@/lib/thread/user-action-labels";
+import {
+  deriveStatusPresentation,
+  deriveUserActionStatus,
+  resolveResolvedResolution,
+} from "@/lib/thread/user-action-status";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -49,7 +51,13 @@ import {
   ListTree,
   X,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
+import {
+  PreviewValue,
+  UserActionErrorBanner,
+  UserActionNotice,
+  UserActionPreview,
+} from "./user-action-preview";
 
 interface UserActionItemProps {
   /** 当前 Thread id；用于构造 :resolve 路径。 */
@@ -62,82 +70,26 @@ interface UserActionItemProps {
 // @/lib/thread/user-action-fields 与 @/lib/thread/user-action-labels，本文件只保留
 // PreviewValue 子组件与 UserActionItem 主组件。
 
-function PreviewValue({ value, depth = 0 }: { value: unknown; depth?: number }): ReactNode {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "string") return previewText(value);
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (depth >= 2) return "已省略嵌套内容";
-  if (Array.isArray(value)) {
-    return (
-      <ul className="space-y-0.5">
-        {value.slice(0, 12).map((entry, index) => (
-          <li
-            key={`${depth}:${index}:${typeof entry === "string" ? entry : JSON.stringify(entry)}`}
-            className="break-words"
-          >
-            <PreviewValue value={entry} depth={depth + 1} />
-          </li>
-        ))}
-        {value.length > 12 ? <li>已省略其余项目</li> : null}
-      </ul>
-    );
-  }
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).slice(0, 8);
-    return (
-      <dl className="space-y-1 border-l border-border pl-2">
-        {entries.map(([key, nested], index) => (
-          <div key={key} className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-2">
-            <dt className="max-w-32 truncate text-muted-foreground">
-              {previewFieldLabel(key, index)}
-            </dt>
-            <dd className="min-w-0 break-words">
-              <PreviewValue value={nested} depth={depth + 1} />
-            </dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
-  return "—";
-}
-
 export function UserActionItem({ threadId, item }: UserActionItemProps) {
   const content = item.content as UserActionContent;
 
   // userAction hook 处理 confirmation/auth/grant/input 类型。
   // Agent 与 Runtime Authority 废弃 handoff（「把会话交接给主 Agent」语义随 Agent 非前置移除），不再有 handoff 专属分支。
   const userActionHook = useUserAction({ threadId });
-
-  // 请求状态：优先用 content.state，其次用 item.item_state 推断
-  // - content.state=pending|resolved|expired（由 user_action.resolved 或平台过期任务写入）
-  // - item.item_state=pending|completed|failed|cancelled（ThreadItem 自身状态）
-  const isExpired =
-    content.state === "expired" ||
-    (content.expires_at ? new Date(content.expires_at).getTime() <= Date.now() : false);
-  // Authority 引用：:resolve 只能使用非空 request_id；缺失/空白 → fail-closed（绝不 fallback 到 item.id）。
-  const requestId =
-    typeof content.request_id === "string" && content.request_id.trim().length > 0
-      ? content.request_id.trim()
-      : null;
-  const isItemPending = item.item_state === "pending";
-  const isRequestPending = content.state === "pending" || (!content.state && isItemPending);
-  const isResolved =
-    content.state === "resolved" || (!isRequestPending && !isExpired && !isItemPending);
-
-  // 最近一次解析结果（用于 UI 显示 "已同意/已拒绝/已提交/已取消"）
-  // 只按 Authority request_id 匹配；request_id 缺失时不回退到 item.id。
-  const resolvedResolution =
-    requestId && userActionHook.lastResolve?.request_id === requestId
-      ? userActionHook.lastResolve.resolution
-      : content.state === "resolved"
-        ? (content.resolution ?? null)
-        : null;
-
   const busy = userActionHook.busy;
   const error = userActionHook.error;
   const clearError = userActionHook.clearError;
 
+  // 状态派生（规则见 @/lib/thread/user-action-status，纯逻辑可单测）
+  const status = deriveUserActionStatus(content, item);
+  const resolvedResolution = resolveResolvedResolution(content, status, userActionHook.lastResolve);
+  const presentation = deriveStatusPresentation(content, item, status, resolvedResolution);
+  const showActions = status.showActions && !resolvedResolution;
+  const isExpired = status.isExpired;
+  const isResolved = status.isResolved;
+  const requestId = status.requestId;
+
+  // 展示文案派生
   const requestTypeLabel = getRequestTypeLabel(content.request_type);
   const isAgentInputRequired =
     content.request_type === "input" && content.purpose === "a2a_input_required";
@@ -156,24 +108,16 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
         ) ?? "需要你的操作");
   const preview = isStructuredPreview(content.preview) ? content.preview : null;
 
-  // input 类型的字段（schema 缺失/空/不支持/非法 pattern → ok=false，fail-closed）
-  const inputSchema = useMemo(
-    () => extractInputFields(content.input_schema),
-    [content.input_schema],
-  );
-  const inputFields = inputSchema.fields;
-  const singleChoiceField =
-    inputFields.length === 1 && inputFields[0]?.enum && inputFields[0].enum.length > 0
-      ? inputFields[0]
-      : null;
-  const [inputValues, setInputValues] = useState<Record<string, string>>({});
-  const [userNote, setUserNote] = useState("");
+  // 输入表单（解析 + 校验 + 提交归一，见 useUserActionForm）
+  const form = useUserActionForm(content);
+  const inputFields = form.fields;
+  const inputFormValid = form.valid;
+  const singleChoiceField = form.singleChoiceField;
+
   const [customOpen, setCustomOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // 是否展示操作按钮
-  const showActions = isRequestPending && !isExpired && !resolvedResolution;
   const isDiffConfirmation =
     content.request_type === "confirmation" &&
     typeof content.diff === "string" &&
@@ -188,10 +132,44 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
     clearError();
     void userActionHook.resolve(requestId, resolution, {
       ...options,
-      ...(userNote.trim() ? { userNote: userNote.trim() } : {}),
+      ...(form.userNote.trim() ? { userNote: form.userNote.trim() } : {}),
     });
   };
 
+  // 表单提交：把表单值归一为响应对象（可选留空 → 省略该键）
+  const submitInputValues = (values: Readonly<Record<string, string>>) => {
+    if (busy || !showActions || !requestId) return;
+    const payload = form.buildPayload(values);
+    if (!payload) return;
+    handleUserActionResolve("submit", { responseRedactedJson: payload });
+  };
+
+  const handleInputSubmit = () => {
+    if (!inputFormValid) return;
+    submitInputValues(form.values);
+  };
+
+  const handleSingleChoiceSubmit = (field: InputFieldDef, value: string) => {
+    const nextValues = { ...form.values, [field.key]: value };
+    form.setValue(field.key, value);
+    submitInputValues(nextValues);
+  };
+
+  // 状态标签（见 user-action-status#deriveStatusPresentation）
+  const statusLabel = presentation.label;
+  const statusColor = presentation.cardClass;
+  const statusTagColor = presentation.tagClass;
+  const expiresLabel = formatExpiresAt(content.expires_at);
+
+  // renderActions JSX 用的便捷别名（表单态与状态位的短名）
+  const inputValues = form.values;
+  const userNote = form.userNote;
+  const setUserNote = form.setUserNote;
+  const handleInputChange = form.setValue;
+  const isRequestPending = status.isRequestPending;
+  const inputSchema = { ok: form.schemaOk };
+
+  // 自定义回复区（自由文本随同一 AgentCall 恢复路径提交）
   const customReply = showActions ? (
     <div className="px-4 py-3">
       <button
@@ -246,80 +224,6 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
     </div>
   ) : null;
 
-  const handleInputChange = (key: string, value: string) => {
-    setInputValues((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // 客户端按已支持 schema 子集校验（omitted/required、type/minLength/maxLength/pattern/enum）。
-  // 仅用于体验（禁用提交、避免消费后无法重试）；服务端 Ajv 校验仍是 Authority。
-  const inputFormValid = (() => {
-    if (!inputSchema.ok) return false;
-    for (const field of inputFields) {
-      const normalized = normalizeFieldValue(field, inputValues[field.key] ?? "");
-      if (!normalized.ok) return false;
-    }
-    return true;
-  })();
-
-  const submitInputValues = (values: Readonly<Record<string, string>>) => {
-    if (busy || !showActions || !requestId || !inputSchema.ok) return;
-    // 把表单值转换为对应类型（字符串 trim）；可选字段留空 → 省略该键
-    const response: Record<string, unknown> = {};
-    for (const field of inputFields) {
-      const normalized = normalizeFieldValue(field, values[field.key] ?? "");
-      if (!normalized.ok) return;
-      if (normalized.ok && !normalized.omit) response[field.key] = normalized.value;
-    }
-    handleUserActionResolve("submit", { responseRedactedJson: response });
-  };
-
-  const handleInputSubmit = () => {
-    if (!inputFormValid) return;
-    submitInputValues(inputValues);
-  };
-
-  const handleSingleChoiceSubmit = (field: InputFieldDef, value: string) => {
-    const nextValues = { ...inputValues, [field.key]: value };
-    setInputValues(nextValues);
-    submitInputValues(nextValues);
-  };
-
-  // 状态标签
-  const statusLabel = isExpired
-    ? "已超时"
-    : resolvedResolution
-      ? getResolutionLabel(resolvedResolution)
-      : isRequestPending
-        ? content.request_type === "input"
-          ? "需要你的输入"
-          : content.request_type === "auth"
-            ? "需要你授权"
-            : "需要你的确认"
-        : item.item_state === "completed"
-          ? "已完成"
-          : item.item_state === "failed"
-            ? "失败"
-            : "等待处理";
-
-  const statusColor = isExpired
-    ? "border-destructive/30 bg-destructive/5"
-    : resolvedResolution
-      ? "border-success/25 bg-success/5"
-      : isRequestPending
-        ? "border-border bg-card"
-        : "border-border bg-muted/40";
-
-  const statusTagColor = isExpired
-    ? "bg-destructive/10 text-destructive"
-    : resolvedResolution
-      ? "bg-success/10 text-success"
-      : isRequestPending
-        ? "bg-muted text-muted-foreground"
-        : "bg-muted-foreground/10 text-muted-foreground";
-
-  const expiresLabel = formatExpiresAt(content.expires_at);
-
-  // 渲染操作按钮区
   const renderActions = () => {
     if (!showActions) return null;
 
@@ -673,49 +577,11 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
             ) : null}
           </div>
 
-          {preview ? (
-            <div className="px-2 pb-1.5 sm:px-3">
-              <button
-                type="button"
-                onClick={() => setPreviewOpen((open) => !open)}
-                aria-expanded={previewOpen}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                <span className="flex items-center gap-2">
-                  <ListTree aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
-                  {previewOpen ? "收起操作详情" : "查看操作详情"}
-                </span>
-                <ChevronDown
-                  aria-hidden="true"
-                  className={cn("size-3.5 transition-transform", previewOpen && "rotate-180")}
-                  strokeWidth={1.6}
-                />
-              </button>
-
-              {previewOpen ? (
-                <section
-                  aria-label="操作详情"
-                  className="mx-1 mb-2 rounded-xl bg-muted/55 px-3 py-2.5 text-xs"
-                >
-                  <dl className="space-y-1.5">
-                    {Object.entries(preview).map(([key, value], index) => (
-                      <div
-                        key={key}
-                        className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 leading-5"
-                      >
-                        <dt className="truncate text-muted-foreground">
-                          {previewFieldLabel(key, index)}
-                        </dt>
-                        <dd className="min-w-0 break-words text-foreground">
-                          <PreviewValue value={value} />
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ) : null}
-            </div>
-          ) : null}
+          <UserActionPreview
+            preview={preview}
+            open={previewOpen}
+            onToggle={() => setPreviewOpen((open) => !open)}
+          />
 
           {showActions ? (
             <div className="space-y-1.5 px-2 pb-2.5 sm:px-3 sm:pb-3">
@@ -770,37 +636,17 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
 
           {customReply}
           {showActions && !requestId ? (
-            <div
-              role="alert"
-              className="mx-4 mb-3 rounded-lg bg-muted px-3 py-2 text-xs text-foreground"
-            >
+            <UserActionNotice tone="alert">
               操作信息不完整，无法执行操作；请刷新会话后重试。
-            </div>
+            </UserActionNotice>
           ) : null}
 
           {error && showActions ? (
-            <div
-              role="alert"
-              className="mx-4 mb-3 flex items-center justify-between rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive"
-            >
-              <span>
-                {error.title}：{error.description}
-              </span>
-              <button
-                type="button"
-                onClick={clearError}
-                className="ml-2 flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-destructive/10"
-                aria-label="关闭错误提示"
-              >
-                <X aria-hidden="true" className="size-3.5" />
-              </button>
-            </div>
+            <UserActionErrorBanner error={error} onDismiss={clearError} />
           ) : null}
 
           {isExpired && !resolvedResolution ? (
-            <div className="mx-4 mb-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-              请求已超时，未执行任何操作。
-            </div>
+            <UserActionNotice>请求已超时，未执行任何操作。</UserActionNotice>
           ) : null}
         </section>
       </div>
