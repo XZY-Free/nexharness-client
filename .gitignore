@@ -17,6 +17,7 @@ tmp/
 .env.local
 .vite/
 tsconfig.tsbuildinfo
+.vitest-collection-check.json
 
 # AI 工作区数据（项目 memory 等，本地留存不进库）
 .workbuddy/

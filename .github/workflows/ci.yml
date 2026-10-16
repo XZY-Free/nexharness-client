@@ -24,6 +24,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      # 收集完整性校验：vitest 在高负载下曾静默少收集测试文件（退出码仍 0 → 假绿）。
+      # 本步对比"磁盘测试文件数"与"vitest 实际收集数"，漏收集即失败。
+      - run: node scripts/check-test-collection.mjs
       - run: pnpm build
       # 桌面构建链验证：renderer 构建 + 主进程/预加载类型检查（完整 electron-builder 打包本地/发布时跑）。
       - run: pnpm build:desktop-renderer

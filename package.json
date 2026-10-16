@@ -20,7 +20,8 @@
     "rebuild:desktop-native": "node scripts/rebuild-desktop-native.mjs",
     "dev:desktop": "pnpm build:desktop && pnpm rebuild:desktop-native && electron desktop/package-app",
     "package:desktop": "pnpm build:desktop && pnpm rebuild:desktop-native && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config desktop/electron-builder.yml --mac --arm64",
-    "package:desktop:signed": "pnpm build:desktop && pnpm rebuild:desktop-native && electron-builder --config desktop/electron-builder.yml --mac --arm64"
+    "package:desktop:signed": "pnpm build:desktop && pnpm rebuild:desktop-native && electron-builder --config desktop/electron-builder.yml --mac --arm64",
+    "test:collect-check": "node scripts/check-test-collection.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
