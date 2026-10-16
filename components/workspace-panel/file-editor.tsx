@@ -133,19 +133,16 @@ function EditableArea({
         return r.json();
       })
       .then(
-        (json: {
-          ok?: boolean;
-          data?: { content: string | null; stat?: { revision?: string }; too_large?: boolean };
-        }) => {
+        (json: { content: string | null; stat?: { revision?: string }; too_large?: boolean }) => {
           if (cancelled) return;
-          // X42 修复：服务端返回 too_large 时不传 content，前端直接展示只读提示
-          if (json.ok && json.data?.too_large) {
+          // 服务端返回 too_large 时不传 content，前端直接展示只读提示
+          if (json.too_large) {
             setLoad({ status: "too_large", message: "文件过大（超过 1MB），不可编辑，请下载查看" });
             return;
           }
-          if (json.ok && json.data && typeof json.data.content === "string") {
-            const content = json.data.content;
-            const revision = json.data.stat?.revision ?? "";
+          if (typeof json.content === "string") {
+            const content = json.content;
+            const revision = json.stat?.revision ?? "";
             setLoad({ status: "ok", content, revision });
             setDraft(content);
             baseRef.current = { content, revision };
@@ -198,7 +195,7 @@ function EditableArea({
           return;
         }
         const body = await res.json();
-        const newRevision: string = body?.data?.stat?.revision ?? "";
+        const newRevision: string = body?.stat?.revision ?? "";
         // 更新基线为已保存内容 + 新 revision
         baseRef.current = { content: draft, revision: newRevision };
         setSave({ status: "saved" });
@@ -276,14 +273,14 @@ function EditableArea({
 
   if (load.status === "loading") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-[13px] text-[var(--fg-subtle)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-[13px] text-[var(--foreground-subtle)]">
         加载中…
       </div>
     );
   }
   if (load.status === "error") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--danger)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--destructive)]">
         {load.message}
       </div>
     );
@@ -291,7 +288,7 @@ function EditableArea({
   // X42 修复：服务端判定 too_large 时不进入编辑态，回退只读查看器
   if (load.status === "too_large") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--muted-foreground)]">
         {load.message}
       </div>
     );
@@ -304,13 +301,15 @@ function EditableArea({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 编辑器状态栏 */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-[var(--border)] border-b bg-[var(--surface)] px-3 py-1.5">
-        <div className="flex items-center gap-2 text-[11px] text-[var(--fg-subtle)]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-[var(--border)] border-b bg-[var(--card)] px-3 py-1.5">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--foreground-subtle)]">
           <SaveBadge save={save} isDirty={isDirty} />
           {kind === "markdown" && <span>Markdown 源码</span>}
           {kind === "html" && <span>HTML 源码（不执行）</span>}
         </div>
-        <span className="font-mono text-[11px] text-[var(--fg-subtle)]">{lineCount} 行</span>
+        <span className="font-mono text-[11px] text-[var(--foreground-subtle)]">
+          {lineCount} 行
+        </span>
       </div>
 
       {/* 冲突面板 */}
@@ -324,14 +323,14 @@ function EditableArea({
       )}
 
       {/* 编辑区：行号 + textarea */}
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-[var(--surface)]">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-[var(--card)]">
         <LineNumbers content={draft} />
         <textarea
           ref={textareaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           spellCheck={false}
-          className="flex-1 resize-none border-0 bg-transparent px-3 py-3 font-mono text-[12.5px] leading-5 text-[var(--fg)] outline-none"
+          className="flex-1 resize-none border-0 bg-transparent px-3 py-3 font-mono text-[12.5px] leading-5 text-[var(--foreground)] outline-none"
           placeholder="// 文件内容为空"
         />
       </div>
@@ -350,7 +349,7 @@ function SaveBadge({ save, isDirty }: { save: SaveState; isDirty: boolean }) {
   }
   if (save.status === "saved") {
     return (
-      <span className="flex items-center gap-1 text-[var(--fg-subtle)]">
+      <span className="flex items-center gap-1 text-[var(--foreground-subtle)]">
         <Icon.check size={12} />
         已保存
       </span>
@@ -358,7 +357,7 @@ function SaveBadge({ save, isDirty }: { save: SaveState; isDirty: boolean }) {
   }
   if (save.status === "error") {
     return (
-      <span className="flex items-center gap-1 text-[var(--danger)]">
+      <span className="flex items-center gap-1 text-[var(--destructive)]">
         <Icon.warn size={12} />
         {save.message}
       </span>
@@ -366,14 +365,16 @@ function SaveBadge({ save, isDirty }: { save: SaveState; isDirty: boolean }) {
   }
   if (save.status === "conflict") {
     return (
-      <span className="flex items-center gap-1 text-[var(--danger)]">
+      <span className="flex items-center gap-1 text-[var(--destructive)]">
         <Icon.warn size={12} />
         文件已被修改，需合并
       </span>
     );
   }
   return (
-    <span className={isDirty ? "text-[var(--fg-muted)]" : "text-[var(--fg-subtle)]"}>
+    <span
+      className={isDirty ? "text-[var(--muted-foreground)]" : "text-[var(--foreground-subtle)]"}
+    >
       {isDirty ? "● 有未保存改动" : "自动保存已开启"}
     </span>
   );
@@ -383,7 +384,7 @@ function LineNumbers({ content }: { content: string }) {
   const lines = content.split("\n");
   return (
     <div
-      className="select-none overflow-hidden border-r border-[var(--border)] bg-[var(--surface-2)] px-2 py-3 text-right font-mono text-[11px] leading-5 text-[var(--fg-subtle)]"
+      className="select-none overflow-hidden border-r border-[var(--border)] bg-[var(--muted)] px-2 py-3 text-right font-mono text-[11px] leading-5 text-[var(--foreground-subtle)]"
       aria-hidden="true"
     >
       {lines.map((_, i) => (
@@ -414,14 +415,14 @@ function ConflictBar({
         <Icon.warn size={13} />
         <span className="font-medium">文件已被外部修改（AI 或其他来源）</span>
       </div>
-      <div className="mb-2 max-h-[180px] overflow-auto rounded border border-[var(--border)] bg-[var(--surface)] p-2 font-mono text-[11px] leading-5">
+      <div className="mb-2 max-h-[180px] overflow-auto rounded border border-[var(--border)] bg-[var(--card)] p-2 font-mono text-[11px] leading-5">
         <DiffView remoteLines={remoteLines} localLines={localLines} />
       </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onTakeRemote}
-          className="rounded border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--fg-muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg)]"
+          className="rounded border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--muted-foreground)] transition hover:border-[var(--border-strong)] hover:text-[var(--foreground)]"
         >
           采用远端版本
         </button>
@@ -463,7 +464,7 @@ function DiffView({
         const rowKey = `${row.kind}:${i}:${row.remote ?? ""}:${row.local ?? ""}`;
         if (row.kind === "same") {
           return (
-            <div key={rowKey} className="text-[var(--fg-subtle)]">
+            <div key={rowKey} className="text-[var(--foreground-subtle)]">
               <span className="mr-2 select-none"> </span>
               {row.remote}
             </div>

@@ -231,12 +231,14 @@ export function registerIpcHandlers(
       };
     }
     const body = (await response.json().catch(() => null)) as {
-      data?: { workspace_id?: unknown; binding_id?: unknown; display_name?: unknown };
+      workspace_id?: unknown;
+      binding_id?: unknown;
+      display_name?: unknown;
       error?: { message?: unknown };
     } | null;
-    const workspaceId = body?.data?.workspace_id;
-    const bindingId = body?.data?.binding_id;
-    const safeDisplayName = body?.data?.display_name;
+    const workspaceId = body?.workspace_id;
+    const bindingId = body?.binding_id;
+    const safeDisplayName = body?.display_name;
     if (
       !response.ok ||
       typeof workspaceId !== "string" ||

@@ -27,7 +27,7 @@ export function SkillSyncButton() {
         setError(body?.error?.message ?? "同步失败，请稍后重试");
         return;
       }
-      const d = body.data;
+      const d = body;
       setResult({
         新导入: d.imported?.length ?? 0,
         已更新: d.updated?.length ?? 0,

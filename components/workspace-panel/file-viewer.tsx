@@ -111,15 +111,15 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
         }
         return r.json();
       })
-      .then((json: { ok?: boolean; data?: { content: string | null; too_large?: boolean } }) => {
+      .then((json: { content: string | null; too_large?: boolean }) => {
         if (cancelled) return;
-        // X43 修复：服务端返回 too_large 时不传 content，前端展示只读提示
-        if (json.ok && json.data?.too_large) {
+        // 服务端返回 too_large 时不传 content，前端展示只读提示
+        if (json.too_large) {
           setState({ status: "too_large", message: "文件过大（超过 1MB），仅支持下载查看" });
           return;
         }
-        if (json.ok && json.data && typeof json.data.content === "string") {
-          const content = json.data.content;
+        if (typeof json.content === "string") {
+          const content = json.content;
           setState({ status: "ok", content, truncated: false });
         } else {
           setState({ status: "error", message: "无法加载文件" });
@@ -137,7 +137,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (kind === "image") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[var(--surface-2)] p-4">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[var(--muted)] p-4">
         {/* 工作区 raw 资源（按 threadId + path 动态拼装），不能走 next/image 静态优化。
             alt 用文件名兜底，避免 lint 报必填项缺失。 */}
         <img
@@ -151,7 +151,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (kind === "pdf") {
     return (
-      <div className="relative min-h-0 flex-1 bg-[var(--surface-2)]">
+      <div className="relative min-h-0 flex-1 bg-[var(--muted)]">
         <iframe
           src={rawUrl(threadId, path)}
           title={path}
@@ -163,7 +163,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (kind === "font") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--muted-foreground)]">
         字体文件不预览字形，可下载查看。
       </div>
     );
@@ -172,7 +172,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
   // V6-M3-7: 二进制文件兜底
   if (isBinaryPath(path)) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--muted-foreground)]">
         二进制文件不可预览，可下载查看。
       </div>
     );
@@ -180,7 +180,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (state.status === "loading") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-[13px] text-[var(--fg-subtle)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-[13px] text-[var(--foreground-subtle)]">
         加载中…
       </div>
     );
@@ -188,7 +188,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (state.status === "error") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--danger)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--destructive)]">
         {state.message}
       </div>
     );
@@ -197,7 +197,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
   // X43 修复：服务端判定 too_large 时展示只读提示
   if (state.status === "too_large") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-[13px] text-[var(--muted-foreground)]">
         {state.message}
       </div>
     );
@@ -205,7 +205,7 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   if (kind === "markdown") {
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface)] px-6 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--card)] px-6 py-4">
         {state.truncated && (
           <div className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
             文件过大，仅显示前 1MB 内容
@@ -218,13 +218,13 @@ export function FileViewer({ threadId, path }: { threadId: string; path: string 
 
   // HTML / text / 代码：文件视图一律显示原文，不执行内容。
   return (
-    <div className="min-h-0 flex-1 overflow-auto bg-[var(--surface)]">
+    <div className="min-h-0 flex-1 overflow-auto bg-[var(--card)]">
       {state.truncated && (
         <div className="m-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
           文件过大，仅显示前 1MB 内容
         </div>
       )}
-      <pre className="p-4 text-[12.5px] leading-5 text-[var(--fg)]">
+      <pre className="p-4 text-[12.5px] leading-5 text-[var(--foreground)]">
         <code>{state.content}</code>
       </pre>
     </div>

@@ -34,17 +34,13 @@ export function useAvailableModels(): AvailableModelsState {
         if (!response.ok) throw new Error("models request failed");
 
         const body = (await response.json()) as {
-          ok?: boolean;
-          data?: {
-            models?: Array<{ id?: unknown }>;
-            defaultModel?: unknown;
-          };
+          models?: Array<{ id?: unknown }>;
+          defaultModel?: unknown;
         };
-        const models = (body.data?.models ?? [])
+        const models = (body.models ?? [])
           .filter((model): model is { id: string } => typeof model.id === "string")
           .map((model) => ({ id: model.id }));
-        const defaultModel =
-          typeof body.data?.defaultModel === "string" ? body.data.defaultModel : null;
+        const defaultModel = typeof body.defaultModel === "string" ? body.defaultModel : null;
 
         setState({
           models,

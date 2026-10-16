@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api-fetch";
  *
  * 语义：
  * - 挂载 / path 变更时发起一次 GET（cache: no-store；cookie 会话直通）。
- * - 兼容两类成功信封：apiSuccess（裸资源）与旧 jsonOk（{ ok, data }）。
+ * - 成功响应为裸资源（apiSuccess），直接使用响应体。
  * - 失败保留 HTTP 状态与错误消息（供页面区分 401/403/404/500）。
  * - reload() 触发一次重取；组件卸载后丢弃在途结果。
  */
@@ -47,7 +47,7 @@ export function useApiData<T>(path: string): ApiDataState<T> {
           setData(null);
           return;
         }
-        setData(unwrapEnvelope(body) as T);
+        setData(body as T);
       } catch {
         if (!active) return;
         setHttpStatus(0);
@@ -67,12 +67,6 @@ export function useApiData<T>(path: string): ApiDataState<T> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-/** 旧 jsonOk 信封（{ ok: true, data }）解包；apiSuccess 裸资源原样返回。 */
-function unwrapEnvelope(body: unknown): unknown {
-  if (isRecord(body) && body.ok === true && "data" in body) return body.data;
-  return body;
 }
 
 function extractErrorMessage(body: unknown): string | null {

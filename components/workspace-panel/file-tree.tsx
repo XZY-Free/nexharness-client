@@ -170,13 +170,10 @@ export function FileTree({
         const response = await apiFetch(`/api/threads/${threadId}/workspace`, {
           cache: "no-store",
         });
-        const json = (await response.json()) as {
-          ok?: boolean;
-          data?: { threadId: string; files: string[] };
-        };
+        const json = (await response.json()) as { threadId: string; files: string[] };
         if (cancelled) return;
-        if (response.ok && json.ok && json.data && Array.isArray(json.data.files)) {
-          const nextFiles = json.data.files;
+        if (response.ok && Array.isArray(json.files)) {
+          const nextFiles = json.files;
           setFiles((prev) =>
             prev &&
             prev.length === nextFiles.length &&
@@ -237,7 +234,7 @@ export function FileTree({
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center px-3 text-center text-[12px] text-[var(--danger)]">
+      <div className="flex h-full items-center justify-center px-3 text-center text-[12px] text-[var(--destructive)]">
         {error}
       </div>
     );
@@ -245,7 +242,7 @@ export function FileTree({
 
   if (!tree) {
     return (
-      <div className="flex h-full items-center justify-center px-3 text-[12px] text-[var(--fg-subtle)]">
+      <div className="flex h-full items-center justify-center px-3 text-[12px] text-[var(--foreground-subtle)]">
         加载中…
       </div>
     );
@@ -253,7 +250,7 @@ export function FileTree({
 
   if (tree.children.size === 0) {
     return (
-      <div className="flex h-full items-center justify-center px-3 text-center text-[12px] text-[var(--fg-subtle)]">
+      <div className="flex h-full items-center justify-center px-3 text-center text-[12px] text-[var(--foreground-subtle)]">
         工作区暂无可查看文件
       </div>
     );

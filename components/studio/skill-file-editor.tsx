@@ -42,7 +42,7 @@ export function SkillFileEditor({
   async function loadFiles() {
     const res = await apiFetch(`/studio/api/skills/${skillId}/files`);
     const body = await res.json();
-    if (res.ok) setFiles(body.data?.files ?? []);
+    if (res.ok) setFiles(body.files ?? []);
   }
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export function SkillFileEditor({
     apiFetch(`/studio/api/skills/${skillId}/files`)
       .then(async (response) => ({ ok: response.ok, body: await response.json() }))
       .then(({ ok, body }) => {
-        if (!cancelled && ok) setFiles(body.data?.files ?? []);
+        if (!cancelled && ok) setFiles(body.files ?? []);
       })
       .catch(() => {
         if (!cancelled) setMessage({ tone: "error", text: "文件列表加载失败" });
@@ -72,7 +72,7 @@ export function SkillFileEditor({
         return;
       }
       setCurrent(path);
-      setContent(body.data?.content ?? "");
+      setContent(body.content ?? "");
       setDirty(false);
     } catch {
       setMessage({ tone: "error", text: "网络连接失败，无法打开文件" });
@@ -124,7 +124,7 @@ export function SkillFileEditor({
       });
       const body = await res.json();
       if (res.ok) {
-        setMessage({ tone: "status", text: `版本 ${body.data?.version} 已发布` });
+        setMessage({ tone: "status", text: `版本 ${body.version} 已发布` });
         router.refresh();
         await loadFiles();
       } else {
