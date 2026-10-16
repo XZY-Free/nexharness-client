@@ -62,6 +62,7 @@ import { decideCloseTab } from "./tab-lifecycle";
 import { type TabRestore, applyTabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
+import { teardownThread } from "./thread-teardown";
 import { createSecureView, resolvePartitionKey } from "./view-factory";
 import { ViewRegistry } from "./view-registry";
 import { type WebContentsLike, registerWebContentsHandlers } from "./web-contents-wiring";
@@ -862,48 +863,32 @@ export class BrowserController {
    * 文件清理在后台执行，不阻塞 closeThread 完成信号。失败仅记录不抛。
    */
   closeThread(threadId: ThreadId): number {
-    // 从 contentView 移除所有 view 并清理 lastBounds + webContents 反向索引
-    const viewIds = this.viewRegistry.getViewIds(threadId);
-    for (const tabId of viewIds) {
-      const view = this.viewRegistry.get(threadId, tabId);
-      if (view) {
+    // 清理清单与顺序见 thread-teardown#teardownThread（每项都有测试断言被调用）
+    return teardownThread(threadId, {
+      getViewIds: (id) => this.viewRegistry.getViewIds(id),
+      removeAndCloseView: (id, tabId) => {
+        const view = this.viewRegistry.get(id, tabId);
+        if (!view) return null;
         this.window?.contentView.removeChildView(view);
-        this.webContentsIndex.delete(view.webContents.id);
+        const wcId = view.webContents.id;
         view.webContents.close();
-      }
-      this.lastBounds.delete(`${threadId}:${tabId}`);
-    }
-
-    // 清空注册表（WebContentsView 由 GC 回收， contentView 移除后不再渲染）
-    this.viewRegistry.clearThread(threadId);
-
-    // 清理该 Thread 的所有 DebuggerSession（强制 detach）
-    this.debuggerScheduler.clearThread(threadId);
-
-    // Phase 7-3：释放该 Thread 所有 tab 的监控 ref
-    for (const tabId of viewIds) {
-      this.releaseMonitoring(threadId, tabId);
-    }
-    // 清理该 Thread 的所有页面洞察缓冲
-    this.pageInsightsStore.clearThread(threadId);
-
-    // 销毁 incognito partitions
-    this.sessionManager.destroyIncognitoPartitions(threadId);
-
-    // Phase 7-1：清理该 Thread 的下载记录
-    this.downloadManager?.clearThread(threadId);
-
-    // Phase 7-6：清理该 Thread 的所有本地临时文件（fire-and-forget）
-    // 不 await——closeThread 同步返回，文件清理在后台执行
-    void cleanupThreadTempFiles(this.tempFileRegistry, threadId);
-
-    // Phase 8：联动清理隐藏 QA WebContents 和临时 session partition
-    this.qaController?.closeThread(threadId);
-
-    // 关闭所有 tabs，并删除该 Thread 的持久化恢复记录。
-    const count = this.tabStore.closeAllTabs(threadId);
-    this.config.tabRestore?.deleteThread(threadId);
-    return count;
+        return wcId;
+      },
+      forgetWebContents: (webContentsId) => this.webContentsIndex.delete(webContentsId),
+      forgetBounds: (id, tabId) => this.lastBounds.delete(`${id}:${tabId}`),
+      clearViews: (id) => this.viewRegistry.clearThread(id),
+      clearDebuggerSessions: (id) => this.debuggerScheduler.clearThread(id),
+      releaseMonitoring: (id, tabId) => this.releaseMonitoring(id, tabId),
+      clearPageInsights: (id) => this.pageInsightsStore.clearThread(id),
+      destroyIncognitoPartitions: (id) => this.sessionManager.destroyIncognitoPartitions(id),
+      clearDownloads: (id) => this.downloadManager?.clearThread(id),
+      cleanupTempFiles: (id) => {
+        void cleanupThreadTempFiles(this.tempFileRegistry, id);
+      },
+      closeQa: (id) => this.qaController?.closeThread(id),
+      closeAllTabs: (id) => this.tabStore.closeAllTabs(id),
+      deleteRestoreRecord: (id) => this.config.tabRestore?.deleteThread(id),
+    });
   }
 
   /**
