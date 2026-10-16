@@ -19,9 +19,25 @@
  *
  * 样式：操作卡片（带图标 + 状态 + 按钮）。
  */
+
 import { useUserAction } from "@/components/hooks/use-user-action";
 import type { ClientItem } from "@/lib/client/types";
 import type { UserActionResolution } from "@/lib/server-schema/user-action-request";
+import {
+  type InputFieldDef,
+  type NormalizedFieldValue,
+  type UserActionContent,
+  extractInputFields,
+  isStructuredPreview,
+  normalizeFieldValue,
+  previewText,
+} from "@/lib/thread/user-action-fields";
+import {
+  formatExpiresAt,
+  getRequestTypeLabel,
+  getResolutionLabel,
+  previewFieldLabel,
+} from "@/lib/thread/user-action-labels";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -42,235 +58,9 @@ interface UserActionItemProps {
   readonly item: ClientItem;
 }
 
-/** user_action ThreadItem content 投影（按 request_type 收集所有可能字段）。 */
-interface UserActionContent {
-  request_type?: string;
-  purpose?: string;
-  reason?: string;
-  impact?: string;
-  /** 请求状态：pending | resolved | expired（由 user_action.resolved / 平台过期任务写入）。 */
-  state?: string;
-  /** 过期时间（ISO 8601 字符串）。 */
-  expires_at?: string;
-  /** auth/grant 类型：授权范围。 */
-  scope?: string | readonly string[];
-  /** auth 类型：可信授权 URL（OAuth/OIDC 入口）。 */
-  auth_url?: string;
-  /** grant 类型：目标工具名。 */
-  target_tool?: string;
-  /** input 类型：JSON Schema（描述用户应提交的响应结构）。 */
-  input_schema?: Record<string, unknown>;
-  /** UserActionRequest（Authority）id；:resolve 必须使用此 id，禁止 fallback 到 item.id。 */
-  request_id?: string;
-  /** 请求方提供的标题（覆盖默认类型标题）。 */
-  title?: string;
-  /** 请求方提供的摘要（覆盖 reason 显示）。 */
-  summary?: string;
-  /** 面向用户的问题；purpose 是内部分类，不作为展示正文。 */
-  prompt?: string;
-  /** Agent input-required 的安全目录名称。 */
-  agent_display_name?: string | null;
-  /** Agent 冻结合同是否支持取消；缺失时 fail-closed。 */
-  cancel_supported?: boolean;
-  /** 外部 Agent confirmation 经过服务端协议校验后的安全预览。 */
-  preview?: Record<string, unknown>;
-  resolution?: UserActionResolution;
-  /** confirmation 类型：等待确认的目标文件。 */
-  target_path?: string;
-  /** confirmation 类型：diff 新增/删除行数。 */
-  line_additions?: number;
-  line_deletions?: number;
-  /** confirmation 类型：等待用户审阅的文本 diff。 */
-  diff?: string;
-}
-
-/** request_type 中文映射。 */
-function getRequestTypeLabel(requestType: string | undefined): string {
-  switch (requestType) {
-    case "confirmation":
-      return "确认请求";
-    case "auth":
-      return "授权请求";
-    case "grant":
-      return "权限授予请求";
-    case "input":
-      return "输入请求";
-    default:
-      return "操作请求";
-  }
-}
-
-/** resolution 中文映射。 */
-function getResolutionLabel(resolution: UserActionResolution | null): string {
-  switch (resolution) {
-    case "approve":
-      return "已同意";
-    case "deny":
-      return "已拒绝";
-    case "submit":
-      return "已提交";
-    case "cancel":
-      return "已取消";
-    default:
-      return "已解析";
-  }
-}
-
-/** 格式化过期时间倒计时（粗略，不自动刷新）。 */
-function formatExpiresAt(expiresAt: string | undefined): string | null {
-  if (!expiresAt) return null;
-  const target = new Date(expiresAt).getTime();
-  if (!Number.isFinite(target)) return null;
-  const now = Date.now();
-  if (target <= now) return "已超时";
-  const diff = target - now;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes} 分钟后超时`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时后超时`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天后超时`;
-}
-
-/** 从 input_schema 提取字段定义（轻量实现，不引入完整 JSON Schema 库）。 */
-interface InputFieldDef {
-  key: string;
-  label: string;
-  type: "string" | "number" | "integer" | "boolean";
-  required: boolean;
-  description?: string;
-  enum?: readonly string[];
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-}
-
-/** 字段无 title 时的中文默认 label：不暴露裸技术键。 */
-function defaultFieldLabel(key: string, index: number): string {
-  if (key === "text") return "补充信息";
-  return `输入项 ${index + 1}`;
-}
-
-/** input_schema 解析结果：ok=false 表示 schema 缺失/空/不支持/含非法 pattern，fail-closed。 */
-interface InputSchemaParseResult {
-  readonly ok: boolean;
-  readonly fields: readonly InputFieldDef[];
-}
-
-function extractInputFields(schema: Record<string, unknown> | undefined): InputSchemaParseResult {
-  const fail: InputSchemaParseResult = { ok: false, fields: [] };
-  if (!schema || typeof schema !== "object") return fail;
-  const properties = schema.properties as Record<string, Record<string, unknown>> | undefined;
-  if (!properties || typeof properties !== "object") return fail;
-  const entries = Object.entries(properties);
-  if (entries.length === 0) return fail;
-  const requiredList = (schema.required as readonly string[] | undefined) ?? [];
-  const fields: InputFieldDef[] = [];
-  let index = 0;
-  for (const [key, def] of entries) {
-    if (!def || typeof def !== "object") return fail;
-    const type = (def.type as string | undefined) ?? "string";
-    if (type !== "string" && type !== "number" && type !== "integer" && type !== "boolean")
-      return fail;
-    const pattern = typeof def.pattern === "string" ? def.pattern : undefined;
-    if (pattern) {
-      try {
-        void new RegExp(pattern);
-      } catch {
-        // 非法正则：schema 本身不可用，UI 与服务端一致 fail-closed。
-        return fail;
-      }
-    }
-    const fieldIndex = index;
-    index += 1;
-    fields.push({
-      key,
-      label:
-        (def.title as string | undefined) ??
-        (def.description as string | undefined) ??
-        defaultFieldLabel(key, fieldIndex),
-      type,
-      required: requiredList.includes(key),
-      description: def.description as string | undefined,
-      enum: Array.isArray(def.enum) ? (def.enum as readonly string[]) : undefined,
-      minLength: typeof def.minLength === "number" ? def.minLength : undefined,
-      maxLength: typeof def.maxLength === "number" ? def.maxLength : undefined,
-      pattern,
-    });
-  }
-  return { ok: true, fields };
-}
-
-/**
- * 客户端按已支持 schema 子集校验单字段，返回归一后的提交值。
- * omitted/required 语义：可选字段留空 → omit（提交对象省略该键）；
- * 必填字段留空非法；boolean 必须显式选择 true/false（提交实际布尔值）。
- */
-type NormalizedFieldValue =
-  | { ok: true; omit: true }
-  | { ok: true; omit: false; value: string | number | boolean }
-  | { ok: false };
-
-function normalizeFieldValue(field: InputFieldDef, raw: string): NormalizedFieldValue {
-  const trimmed = raw.trim();
-  if (field.type === "number" || field.type === "integer") {
-    if (!trimmed) return field.required ? { ok: false } : { ok: true, omit: true };
-    const num = Number(trimmed);
-    if (!Number.isFinite(num) || (field.type === "integer" && !Number.isInteger(num)))
-      return { ok: false };
-    return { ok: true, omit: false, value: num };
-  }
-  if (field.type === "boolean") {
-    // 未选择（空）→ 可选则省略，必填则非法；任意其他文本不接受（防把杂串归一成 false）。
-    if (!trimmed) return field.required ? { ok: false } : { ok: true, omit: true };
-    if (trimmed === "true") return { ok: true, omit: false, value: true };
-    if (trimmed === "false") return { ok: true, omit: false, value: false };
-    return { ok: false };
-  }
-  if (!trimmed) return field.required ? { ok: false } : { ok: true, omit: true };
-  if (field.enum && !field.enum.includes(trimmed)) return { ok: false };
-  if (field.minLength !== undefined && trimmed.length < field.minLength) return { ok: false };
-  if (field.maxLength !== undefined && trimmed.length > field.maxLength) return { ok: false };
-  if (field.pattern && !new RegExp(field.pattern).test(trimmed)) return { ok: false };
-  return { ok: true, omit: false, value: trimmed };
-}
-
-/** 历史数据也按受限结构显示，永不把未知对象当 HTML、链接或可执行内容处理。 */
-function isStructuredPreview(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.keys(value).length > 0 &&
-    Object.keys(value).length <= 8
-  );
-}
-
-function previewText(value: string): string {
-  return value.length > 500 ? `${value.slice(0, 500)}…` : value;
-}
-
-const PREVIEW_FIELD_LABELS: Readonly<Record<string, string>> = {
-  leave_type: "假期类型",
-  days: "天数",
-  dates: "日期",
-  reviewer: "审批人",
-  command: "命令",
-  query: "查询内容",
-  url: "网址",
-  name: "姓名",
-  start_date: "开始日期",
-  end_date: "结束日期",
-  reason: "事由",
-  amount: "金额",
-  currency: "币种",
-  recipient: "接收方",
-};
-
-/** 外部协议键只用于读取，不直接暴露给员工界面。 */
-function previewFieldLabel(key: string, index: number): string {
-  return PREVIEW_FIELD_LABELS[key] ?? `信息 ${index + 1}`;
-}
+// 纯逻辑（content 投影类型、input_schema 解析/校验、预览安全判定、文案映射）已抽到
+// @/lib/thread/user-action-fields 与 @/lib/thread/user-action-labels，本文件只保留
+// PreviewValue 子组件与 UserActionItem 主组件。
 
 function PreviewValue({ value, depth = 0 }: { value: unknown; depth?: number }): ReactNode {
   if (value === null || value === undefined) return "—";
