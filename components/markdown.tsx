@@ -9,7 +9,7 @@
  *
  * shiki 异步初始化（加载语言 grammar），故 CodeBlock 用 effect 等 highlighter 就绪后
  * codeToHtml 转 HTML；未就绪时先渲染纯文本 fallback，就绪后替换为高亮 HTML。
- * getSingletonHighlighter 模块级单例，全应用共享一份 highlighter（语言按需预加载常用集）。
+ * 模块级单例 highlighter（createHighlighterCore），全应用共享一份，语言按需预加载常用集。
  */
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
