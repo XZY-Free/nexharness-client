@@ -13,7 +13,7 @@
  */
 import { StudioGatePage } from "@/components/studio/gate-page";
 import { StudioNav } from "@/components/studio/nav";
-import { StudioToastProvider } from "@/components/studio/toast-provider";
+import { ToastProvider } from "@/components/toast";
 import { apiFetch, apiPath } from "@/lib/api-fetch";
 import type { PermissionSnapshot } from "@/lib/identity-client/snapshot";
 import type { StudioNavVisibility } from "@/lib/studio/nav-visibility";
@@ -96,14 +96,14 @@ export function StudioShell({ children }: { readonly children: ReactNode }) {
   }
   return (
     <StudioContext.Provider value={state.value}>
-      <StudioToastProvider>
+      <ToastProvider>
         <div className="flex h-dvh bg-background text-foreground">
           <StudioNav visibleItems={state.value.nav} />
           <main className="min-w-0 flex-1 overflow-y-auto px-5 pt-16 pb-10 md:px-10 md:py-10 lg:px-12">
             {children}
           </main>
         </div>
-      </StudioToastProvider>
+      </ToastProvider>
     </StudioContext.Provider>
   );
 }

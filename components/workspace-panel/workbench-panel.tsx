@@ -10,7 +10,6 @@ import { DesktopBrowserSurface } from "@/components/desktop/desktop-browser-surf
  * view 路由：
  * - view.kind === "file" → 切到工作区页签并选中该文件
  * - view.kind === "app" → 切到预览页签（AppRuntime ready 后打开 Preview）
- * - view.kind === "preview" → 切到预览页签（旧 preview 统一走 iframe）
  * - 其它 → 默认工作区页签
  *
  * 相对旧版的变化：
@@ -55,12 +54,12 @@ export function WorkbenchPanel({
 
   // 外部 view 变化时同步：
   // - file → 切工作区页签并选中文件
-  // - app/preview → 切预览页签
+  // - app → 切预览页签
   useEffect(() => {
     if (view?.kind === "file") {
       setActiveTab("workspace");
       setSelectedPath(view.path);
-    } else if (view?.kind === "app" || view?.kind === "preview") {
+    } else if (view?.kind === "app") {
       setActiveTab(platform === "desktop" ? "browser" : "preview");
     }
   }, [platform, view]);
@@ -102,7 +101,7 @@ export function WorkbenchPanel({
           />
         </div>
         <div className="flex shrink-0 items-center gap-1 py-1.5">
-          {platform === "web" && (view?.kind === "app" || view?.kind === "preview") && (
+          {platform === "web" && view?.kind === "app" && (
             <button
               type="button"
               onClick={handleRefreshPreview}
