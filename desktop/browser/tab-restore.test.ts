@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MigrationDb } from "../storage/db-interface";
-import { TabRestore, persistedTabToMetadata } from "./tab-restore";
+import { TabRestore, applyTabRestore, persistedTabToMetadata, planTabRestore } from "./tab-restore";
 import type { TabMetadata } from "./tab-store";
 
 /**
@@ -301,5 +301,120 @@ describe("TabRestore.deleteThread / getRestorableThreadIds", () => {
     r.persistTabs("t1", [tabMeta({ id: "a" }), tabMeta({ id: "b" })], "a");
     r.persistTabs("t2", [tabMeta({ id: "c" })], "c");
     expect(r.getRestorableThreadIds().sort()).toEqual(["t1", "t2"]);
+  });
+});
+
+describe("planTabRestore — 恢复计划", () => {
+  it("无历史 tabs → null（不恢复）", () => {
+    expect(planTabRestore({ tabs: [], activeTabId: null })).toBeNull();
+  });
+
+  it("有 activeTabId → 采用", () => {
+    const plan = planTabRestore({
+      tabs: [
+        { id: "a", url: "u1" },
+        { id: "b", url: "u2" },
+      ],
+      activeTabId: "b",
+    });
+    expect(plan).toEqual({ tabIds: ["a", "b"], activeTabId: "b" });
+  });
+
+  it("activeTabId 缺失 → **回退第一个 tab**（保证恢复后有可见 tab）", () => {
+    const plan = planTabRestore({
+      tabs: [
+        { id: "a", url: "u1" },
+        { id: "b", url: "u2" },
+      ],
+      activeTabId: null,
+    });
+    expect(plan?.activeTabId).toBe("a");
+  });
+
+  it("tabIds 顺序与历史一致", () => {
+    const plan = planTabRestore({
+      tabs: [
+        { id: "z", url: "1" },
+        { id: "y", url: "2" },
+        { id: "x", url: "3" },
+      ],
+      activeTabId: "y",
+    });
+    expect(plan?.tabIds).toEqual(["z", "y", "x"]);
+  });
+});
+
+describe("applyTabRestore — 编排与跳过条件", () => {
+  function fakeDeps(over = {}) {
+    const log = [];
+    return {
+      log,
+      hasThreadState: () => false,
+      createTab: (t, url, opts) =>
+        log.push(`create:${url}:${opts.tabId}:activate=${opts.activate}`),
+      switchTab: (t, id) => log.push(`switch:${id}`),
+      markRestoring: (t) => log.push("markRestoring"),
+      clearRestoring: (t) => log.push("clearRestoring"),
+      persist: (t) => log.push("persist"),
+      ...over,
+    };
+  }
+
+  it("已有 Thread 状态 → **不创建任何 tab**（避免覆盖用户当前 tabs）", () => {
+    const deps = fakeDeps({ hasThreadState: () => true });
+    const out = applyTabRestore("t1", { tabs: [{ id: "a", url: "u" }], activeTabId: "a" }, deps);
+    expect(out).toEqual({ restored: false, created: 0, activeTabId: null });
+    expect(deps.log).toEqual([]);
+  });
+
+  it("无历史数据 → 不恢复且不留痕", () => {
+    const deps = fakeDeps();
+    const out = applyTabRestore("t1", { tabs: [], activeTabId: null }, deps);
+    expect(out.restored).toBe(false);
+    expect(deps.log).toEqual([]);
+  });
+
+  it("正常恢复：静默创建 → 切换 active → 清标记 → 回写", () => {
+    const deps = fakeDeps();
+    const out = applyTabRestore(
+      "t1",
+      {
+        tabs: [
+          { id: "a", url: "u1" },
+          { id: "b", url: "u2" },
+        ],
+        activeTabId: "b",
+      },
+      deps,
+    );
+    expect(out).toEqual({ restored: true, created: 2, activeTabId: "b" });
+    expect(deps.log).toEqual([
+      "markRestoring",
+      "create:u1:a:activate=false",
+      "create:u2:b:activate=false",
+      "switch:b",
+      "clearRestoring",
+      "persist",
+    ]);
+  });
+
+  it("创建阶段抛错 → 仍清除 restoring 标记（不在 finally 外漏标记）", () => {
+    const deps = fakeDeps({
+      createTab: () => {
+        throw new Error("create failed");
+      },
+    });
+    expect(() =>
+      applyTabRestore("t1", { tabs: [{ id: "a", url: "u" }], activeTabId: "a" }, deps),
+    ).toThrow("create failed");
+    expect(deps.log).toContain("clearRestoring");
+    // 抛错时不回写（persist 在 try 之外）
+    expect(deps.log).not.toContain("persist");
+  });
+
+  it("activeTabId 缺失 → 切换到第一个 tab", () => {
+    const deps = fakeDeps();
+    applyTabRestore("t1", { tabs: [{ id: "a", url: "u" }], activeTabId: null }, deps);
+    expect(deps.log).toContain("switch:a");
   });
 });

@@ -59,7 +59,7 @@ import type { PermissionType } from "./permission-policy";
 import { SessionManager } from "./session-manager";
 import { capturePageSnapshot } from "./snapshot";
 import { decideCloseTab } from "./tab-lifecycle";
-import type { TabRestore } from "./tab-restore";
+import { type TabRestore, applyTabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
 import { createSecureView, resolvePartitionKey } from "./view-factory";
@@ -131,24 +131,19 @@ export class BrowserController {
   /** 首次打开 Thread 时从本地 SQLite 惰性恢复普通 tabs。 */
   restoreTabs(threadId: ThreadId, userId: string): void {
     const tabRestore = this.config.tabRestore;
-    if (!tabRestore || this.tabStore.getThreadState(threadId)) return;
-    const restored = tabRestore.restoreThread(threadId);
-    if (restored.tabs.length === 0) return;
-
-    this.restoringThreads.add(threadId);
-    try {
-      for (const tab of restored.tabs) {
-        this.createTab(threadId, tab.url, userId, {
-          tabId: tab.id,
-          activate: false,
-        });
-      }
-      const activeTabId = restored.activeTabId ?? restored.tabs[0]?.id;
-      if (activeTabId) this.switchTab(threadId, activeTabId);
-    } finally {
-      this.restoringThreads.delete(threadId);
-    }
-    this.persistTabs(threadId);
+    if (!tabRestore) return;
+    // 编排规则（跳过条件 / activeTabId 回退 / 恢复期抑制回写）见 tab-restore#applyTabRestore
+    applyTabRestore(threadId, tabRestore.restoreThread(threadId), {
+      hasThreadState: (id) => Boolean(this.tabStore.getThreadState(id)),
+      // userId 由 controller 闭包绑定（恢复的是同一用户的 tabs）
+      createTab: (id, url, opts) => {
+        this.createTab(id, url, userId, opts);
+      },
+      switchTab: (id, tabId) => this.switchTab(id, tabId),
+      markRestoring: (id) => this.restoringThreads.add(id),
+      clearRestoring: (id) => this.restoringThreads.delete(id),
+      persist: (id) => this.persistTabs(id),
+    });
   }
 
   private persistTabs(threadId: ThreadId): void {

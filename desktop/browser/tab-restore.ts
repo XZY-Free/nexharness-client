@@ -179,3 +179,77 @@ export class TabRestore {
     return result;
   }
 }
+
+// ─── 恢复编排（从 browser-controller 抽出）─────────────────────────
+
+/** 恢复所需的最小依赖（注入，便于测试）。 */
+export interface TabRestoreDeps {
+  /** 该 Thread 是否已有状态（有则跳过恢复，避免覆盖用户当前 tabs）。 */
+  hasThreadState: (threadId: string) => boolean;
+  /** 创建 tab（activate=false 静默创建）。 */
+  createTab: (threadId: string, url: string, opts: { tabId: string; activate: false }) => void;
+  /** 切换 active tab。 */
+  switchTab: (threadId: string, tabId: string) => void;
+  /** 恢复期间标记（供外部抑制持久化回写，避免"恢复即写回"震荡）。 */
+  markRestoring: (threadId: string) => void;
+  clearRestoring: (threadId: string) => void;
+  /** 恢复完成后回写一次。 */
+  persist: (threadId: string) => void;
+}
+
+/** 恢复结果。 */
+export interface TabRestoreOutcome {
+  /** 是否执行了恢复（false 表示无数据/已有状态）。 */
+  readonly restored: boolean;
+  /** 实际创建的 tab 数。 */
+  readonly created: number;
+  /** 最终 active tab id（无则 null）。 */
+  readonly activeTabId: string | null;
+}
+
+/**
+ * 决定本次恢复要创建的 tab 与最终 active tab。
+ *
+ * 规则（与原实现一致）：
+ * - 无历史 tabs → 不恢复
+ * - activeTabId 缺失时**回退到第一个 tab**（保证恢复后必有一个可见 tab）
+ */
+export function planTabRestore(restored: {
+  tabs: readonly { id: string; url: string }[];
+  activeTabId: string | null;
+}): { tabIds: string[]; activeTabId: string | null } | null {
+  if (restored.tabs.length === 0) return null;
+  const activeTabId = restored.activeTabId ?? restored.tabs[0]?.id ?? null;
+  return { tabIds: restored.tabs.map((t) => t.id), activeTabId };
+}
+
+/**
+ * 执行恢复编排（同步；调用方负责传入已取出的历史数据）。
+ *
+ * 抽出价值：原 restoreTabs 混合了"读库 + 循环创建 + 切换 + 回写"，
+ * 现把**编排顺序与跳过条件**独立出来，可用替身验证
+ * （如"已有状态时不创建任何 tab"这类容易写错的条件）。
+ */
+export function applyTabRestore(
+  threadId: string,
+  restored: { tabs: readonly { id: string; url: string }[]; activeTabId: string | null },
+  deps: TabRestoreDeps,
+): TabRestoreOutcome {
+  if (deps.hasThreadState(threadId)) {
+    return { restored: false, created: 0, activeTabId: null };
+  }
+  const plan = planTabRestore(restored);
+  if (!plan) return { restored: false, created: 0, activeTabId: null };
+
+  deps.markRestoring(threadId);
+  try {
+    for (const tab of restored.tabs) {
+      deps.createTab(threadId, tab.url, { tabId: tab.id, activate: false });
+    }
+    if (plan.activeTabId) deps.switchTab(threadId, plan.activeTabId);
+  } finally {
+    deps.clearRestoring(threadId);
+  }
+  deps.persist(threadId);
+  return { restored: true, created: restored.tabs.length, activeTabId: plan.activeTabId };
+}
