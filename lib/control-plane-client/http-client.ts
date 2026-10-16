@@ -1,5 +1,6 @@
 import { apiPath } from "@/lib/api-fetch";
 import type { ApiErrorCode } from "@/lib/error-codes";
+import { AppError } from "@/lib/errors/app-error";
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -7,18 +8,26 @@ export interface ApiClientConfig {
   fetcher?: typeof fetch;
 }
 
-export class ControlPlaneRequestError extends Error {
-  readonly name = "ControlPlaneRequestError";
+/**
+ * 控制面请求错误。
+ *
+ * 继承 `AppError`（统一基类），因此可被 `toAppError()` 幂等识别，
+ * 也可直接 `instanceof AppError` 收到统一处理。
+ */
+export class ControlPlaneRequestError extends AppError {
+  readonly status: number;
 
   constructor(
     readonly code: ApiErrorCode | "INTERNAL_ERROR",
     message: string,
-    readonly requestId: string,
-    readonly retryable: boolean,
-    readonly status: number,
-    readonly details?: Record<string, unknown>,
+    requestId: string,
+    retryable: boolean,
+    status: number,
+    details?: Record<string, unknown>,
   ) {
-    super(message);
+    super({ code, message, requestId, retryable, details });
+    this.name = "ControlPlaneRequestError";
+    this.status = status;
   }
 }
 
