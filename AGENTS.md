@@ -21,7 +21,7 @@ NexHarness 客户端单体仓库：Web SPA（员工端对话 + Studio 管理后�
 - Biome 1.9.4（lint + format 一体，2 空格缩进，行宽 100）
 - Electron 43.4.1 + electron-builder 26（mac arm64）；better-sqlite3 13 + drizzle-orm 0.45（桌面本地库）
 - Node ≥ 22（CI 22 / Docker 24）；pnpm 10（Docker corepack 固定 10.32.1）
-- 无测试框架、无测试文件（playwright 在 devDependencies 但仓内无用例）；验证靠 typecheck + lint + build
+- 测试：vitest（纯逻辑单测）+ Playwright（E2E 冒烟）；见「改完如何验证」
 
 ## 命令（可直接复制执行）
 
@@ -78,7 +78,7 @@ deploy/          Dockerfile（多阶段，默认 NEX_BASE_PATH=/nexharness/）+ 
 - 不要随手改动构建配置（`biome.json`、`vite*.config.ts`、`desktop/electron-builder.yml`、CI）；确需改动前先读原配置确认影响面。
 - 不要在 `lib/persistence/schema/` 新增表；不要直连数据库 Record 到页面（走 control-plane-client DTO）。
 - 不要引入新的 UI 组件库或状态管理库；复用现有 `components/ui` + hooks。
-- 不要创建测试框架配置文件，除非与维护者确认（仓内当前无测试体系）。
+- 不要另起测试框架（已用 vitest + Playwright）；新增用例放进现有体系。
 
 ## 常见任务怎么做
 
@@ -96,7 +96,9 @@ deploy/          Dockerfile（多阶段，默认 NEX_BASE_PATH=/nexharness/）+ 
 2. 重命名跨端符号时全局搜索（Web、renderer、main、preload 都会引用）。
 
 **加测试**
-仓内当前无测试体系。如确需引入，先与维护者确认选型（vitest / playwright），再补配置与用例，不要私自添加测试框架依赖。
+纯逻辑（无 electron / 浏览器 / 服务端依赖）用 vitest：在模块旁建 `*.test.ts`，`pnpm test` 跑。
+跨页面/需真实 DOM 的链路用 Playwright：放进 `e2e/`，`pnpm test:e2e` 跑。
+改安全闸模块时同步更新其 `*.test.ts`（见「改完如何验证」）。
 
 **改桌面协议 / 桥接**
 1. 改 `lib/desktop/` 类型 → 同步 `desktop/bridge/`（命令执行、签名校验）→ `desktop/main/ipc-handlers.ts` → 渲染侧消费方。
@@ -107,12 +109,17 @@ deploy/          Dockerfile（多阶段，默认 NEX_BASE_PATH=/nexharness/）+ 
 ```bash
 pnpm typecheck                                    # 必须通过
 pnpm lint                                         # 必须通过
+pnpm test                                         # 必须通过（vitest 单测）
 pnpm build                                        # 涉及 Web 侧时必须通过
 pnpm exec tsc -p desktop/tsconfig.json --noEmit   # 涉及 desktop/ 或 lib/desktop/ 时必须通过
 pnpm build:desktop-renderer                       # 涉及桌面渲染器时必须通过
 ```
 
-CI（`.github/workflows/ci.yml`）在 push main / PR 时自动跑上述检查（不含 `pnpm build:desktop` 完整打包，本地需要时手动跑）。
+E2E 冒烟（需先起 `pnpm dev`；完整登录链路需服务端在线）：`pnpm test:e2e`。
+
+改安全边界相关模块（`origin-guard`、`rpc-security`、`signing`、`redaction`、`permission-policy`、`approval`）时**必须同步更新对应 `*.test.ts`**——这些是防越权/防重放/防泄密的最后一道闸，放宽行为必须先改测试并说明理由。
+
+CI（`.github/workflows/ci.yml`）在 push main / PR 时自动跑 typecheck / lint / test / build / 桌面构建链（不含 `pnpm build:desktop` 完整打包，本地需要时手动跑）。
 
 ## 关键环境变量速查
 

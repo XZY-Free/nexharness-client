@@ -31,6 +31,8 @@ dev server 将 `/api`、`/admin/api`、`/studio/api`、`/preview` 代理到 nexh
 | `pnpm build` | typecheck + 静态产物（`dist/`） |
 | `pnpm typecheck` | `tsc --noEmit`（Web 侧） |
 | `pnpm lint` / `pnpm lint:fix` | Biome 检查 / 自动修复 |
+| `pnpm test` / `pnpm test:watch` | 单元测试（vitest，纯逻辑模块） |
+| `pnpm test:e2e` | E2E 冒烟（Playwright；需先起 `pnpm dev`） |
 | `pnpm format` | Biome 格式化 |
 | `pnpm preview` | 预览构建产物 |
 | `pnpm build:desktop-renderer` | 桌面渲染器构建（`desktop/renderer-dist/`） |
@@ -104,6 +106,11 @@ public/              品牌资产与 theme-init.js
 - TypeScript strict（含 `noUncheckedIndexedAccess`）；Biome 统一 lint + format（2 空格缩进，行宽 100）。
 - 应用内 API 请求统一走 `lib/api-fetch.ts` 的 `apiFetch` / `apiPath`（自动拼 basePath），不要裸 `fetch("/api/...")`。
 - `next/link`、`next/navigation` 通过 alias 映射到 react-router shim；新代码直接用 react-router API。
-- CI（`.github/workflows/ci.yml`，push main / PR）：`pnpm typecheck` → `pnpm lint` → `pnpm build` → `pnpm build:desktop-renderer` → `pnpm exec tsc -p desktop/tsconfig.json --noEmit`。
+- CI（`.github/workflows/ci.yml`，push main / PR）：`pnpm typecheck` → `pnpm lint` → `pnpm test` → `pnpm build` → `pnpm build:desktop-renderer` → 桌面 `tsc`。
+
+## 测试
+
+- **单元测试（vitest）**：`pnpm test`。覆盖不依赖 electron / 浏览器 / 服务端的纯逻辑——origin 守卫、RPC 信封安全校验、ed25519 签名、脱敏、CDP 输入映射。新增此类模块时请在旁边加 `*.test.ts`。
+- **E2E 冒烟（Playwright）**：先起 dev server（`pnpm dev`），再 `pnpm test:e2e`。覆盖 SPA 加载、门禁拦截、404 视图、无未捕获异常。完整登录后链路需 nexharness 服务端（:3210）与 auth-center 在线。
 
 AI 协作请读 `AGENTS.md`。

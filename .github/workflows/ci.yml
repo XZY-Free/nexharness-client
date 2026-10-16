@@ -23,6 +23,7 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm test
       - run: pnpm build
       # 桌面构建链验证：renderer 构建 + 主进程/预加载类型检查（完整 electron-builder 打包本地/发布时跑）。
       - run: pnpm build:desktop-renderer
