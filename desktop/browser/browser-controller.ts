@@ -45,6 +45,7 @@ import {
 } from "./permission-policy";
 import type { PermissionType } from "./permission-policy";
 import { SessionManager } from "./session-manager";
+import { decideCloseTab, decideUploadOutcome } from "./tab-lifecycle";
 import type { TabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
@@ -304,12 +305,10 @@ export class BrowserController {
       this.showView(threadId, newActiveTabId);
     }
 
-    // 如果是 incognito tab 且没有更多 incognito tabs，销毁 session
-    if (tab?.incognito) {
-      const remainingIncognito = this.tabStore.getTabs(threadId).filter((t) => t.incognito);
-      if (remainingIncognito.length === 0) {
-        this.sessionManager.destroyIncognitoPartitions(threadId);
-      }
+    // incognito session 销毁规则（纯逻辑抽出，见 tab-lifecycle.ts）
+    const decision = decideCloseTab(tab?.incognito ?? false, this.tabStore.getTabs(threadId));
+    if (decision.destroyIncognitoSession) {
+      this.sessionManager.destroyIncognitoPartitions(threadId);
     }
 
     return tab;
@@ -1321,10 +1320,11 @@ export class BrowserController {
       fileName,
     });
 
-    if (result.ok && result.workspacePath) {
-      this.downloadManager.completeUpload(downloadId, result.workspacePath);
+    const outcome = decideUploadOutcome(result);
+    if (outcome.state === "uploaded") {
+      this.downloadManager.completeUpload(downloadId, outcome.workspacePath);
     } else {
-      this.downloadManager.failUpload(downloadId, result.error ?? "上传失败");
+      this.downloadManager.failUpload(downloadId, outcome.error);
     }
     // Phase 7-6：无论成功或失败都清理本地文件——
     // 成功：文件已上传到 workspace，本机副本无价值
