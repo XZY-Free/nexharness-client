@@ -43,6 +43,7 @@ import {
   type DownloadManagerLike,
   handleWillDownload,
 } from "./download-coordinator";
+import { downloadUrlToFileImpl, uploadWorkspaceFileWith } from "./file-upload";
 import {
   buildSelectScript,
   dispatchClick,
@@ -92,6 +93,19 @@ export interface BrowserControllerConfig {
  * 使用 BrowserWindow.contentView 管理子 view。
  * active view 显示在内容区，非 active view 隐藏到 1x1 bounds。
  */
+/**
+ * 下载 URL 到本地临时文件（流式；见 file-upload#downloadUrlToFileImpl）。
+ */
+async function downloadUrlToFile(url: string, dest: string): Promise<boolean> {
+  return downloadUrlToFileImpl({
+    url,
+    dest,
+    createWriteStream: (d) => fs.createWriteStream(d),
+    fromWeb: (s) => Readable.fromWeb(s as unknown as import("stream/web").ReadableStream),
+    pipeline: (src, d) => pipeline(src, d as unknown as import("node:fs").WriteStream),
+  });
+}
+
 export class BrowserController {
   private tabStore = new TabStore();
   private viewRegistry = new ViewRegistry<WebContentsView>();
@@ -543,74 +557,24 @@ export class BrowserController {
     selector: string,
     downloadUrl: string,
   ): Promise<boolean> {
-    // 1. 下载文件到临时目录
-    const tempPath = path.join(os.tmpdir(), `nexharness-upload-${randomUUID()}`);
-    try {
-      const response = await fetch(downloadUrl);
-      if (!response.ok || !response.body) return false;
-      // response.body 是 Web ReadableStream，转换为 Node Readable 流式写入临时文件
-      const nodeStream = Readable.fromWeb(
-        response.body as unknown as import("stream/web").ReadableStream,
-      );
-      await pipeline(nodeStream, fs.createWriteStream(tempPath));
-    } catch {
-      // 下载失败时清理已部分写入的临时文件
-      try {
-        await fs.promises.unlink(tempPath);
-      } catch {
-        // 忽略清理失败
-      }
-      return false;
-    }
-
-    // 2. 通过 CDP 设置 file input
-    const target = await this.debuggerScheduler.acquire(threadId, tabId);
-    if (!target) {
-      try {
-        await fs.promises.unlink(tempPath);
-      } catch {
-        // 忽略清理失败
-      }
-      return false;
-    }
-    try {
-      // 获取 document root（解析规则见 cdp-input#extractDocumentRootId，fail-closed）
-      const rootId = extractDocumentRootId(
-        await target.sendCommand("DOM.getDocument", { depth: 0 }),
-      );
-      if (rootId === null) return false;
-      // 查询目标元素（nodeId=0 表示未匹配，必须当失败）
-      const nodeId = extractQueryNodeId(
-        await target.sendCommand("DOM.querySelector", { nodeId: rootId, selector }),
-      );
-      if (nodeId === null) return false;
-      // 设置文件（使用临时文件路径）
-      const setResult = await target.sendCommand("DOM.setFileInputFiles", {
-        nodeId,
-        files: [tempPath],
-      });
-      return setResult.ok;
-    } finally {
-      this.debuggerScheduler.release(threadId, tabId);
-      // 3. 清理临时文件（无论成功失败都删除，避免临时目录堆积）
-      try {
-        await fs.promises.unlink(tempPath);
-      } catch {
-        // 忽略清理失败
-      }
-    }
+    // 编排（下载 → 定位 → 设文件 → 清理）见 file-upload#uploadWorkspaceFileWith
+    return uploadWorkspaceFileWith(selector, downloadUrl, {
+      makeTempPath: () => path.join(os.tmpdir(), `nexharness-upload-${randomUUID()}`),
+      downloadToFile: (url, dest) => downloadUrlToFile(url, dest),
+      acquire: () => this.debuggerScheduler.acquire(threadId, tabId),
+      release: () => this.debuggerScheduler.release(threadId, tabId),
+      unlink: async (filePath) => {
+        try {
+          await fs.promises.unlink(filePath);
+        } catch {
+          // 忽略清理失败
+        }
+      },
+      extractRootId: extractDocumentRootId,
+      extractNodeId: extractQueryNodeId,
+    });
   }
 
-  /**
-   * Phase 7-3：获取页面快照（结构化 DOM 摘要 + 可见文本）。
-   *
-   * 使用 CDP Runtime.evaluate 在页面上下文中执行脚本，提取：
-   * - text: body.innerText（可见文本，截断到 maxTextLength）
-   * - domSummary: 结构化 JSON（title、forms、links、meta 信息）
-   *
-   * 不返回原始 HTML（"DOM 和 accessibility 返回结构化摘要，不向模型默认发送整页 HTML"）
-   * @param maxTextLength - 文本截断长度（可选，默认不截断由 redaction 处理）
-   */
   async getSnapshot(
     threadId: ThreadId,
     tabId: TabId,
