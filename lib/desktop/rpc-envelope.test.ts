@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canonicalSerialize, getEnvelopeSignPayload, getResultSignPayload } from "./rpc-envelope";
+import {
+  approvalScopeSchema,
+  canonicalSerialize,
+  getEnvelopeSignPayload,
+  getResultSignPayload,
+  rpcRequestEnvelopeSchema,
+} from "./rpc-envelope";
 
 /**
  * canonicalSerialize 是签名一致性的根基：字段顺序不应影响签名，
@@ -115,5 +121,80 @@ describe("getResultSignPayload", () => {
     } as never);
     expect(out).not.toContain("S");
     expect(out).not.toContain("signature");
+  });
+});
+
+/**
+ * approvalScope 是新增的**可选**字段，用于让 Desktop 独立核验审批归属。
+ *
+ * 向后兼容是硬约束：服务端尚未实现审批时不发该字段，此时 canonical 签名载荷
+ * 必须与既往完全一致，否则验签会全量失败。一旦出现则必须完整。
+ */
+describe("approvalScope — 向后兼容与强制完整", () => {
+  function envelope(over: Record<string, unknown> = {}) {
+    return {
+      protocolVersion: 1,
+      requestId: "req-1",
+      deviceId: "dev-1",
+      userId: "u-1",
+      threadId: "t-1",
+      tabId: null,
+      runId: null,
+      approvalId: null,
+      command: "browser.getTabs",
+      payload: {},
+      issuedAt: 1,
+      expiresAt: 2,
+      nonce: "n-1",
+      signature: "SIG",
+      ...over,
+    };
+  }
+
+  it("缺省（服务端未提供）时信封仍通过 schema", () => {
+    expect(rpcRequestEnvelopeSchema.safeParse(envelope()).success).toBe(true);
+  });
+
+  it("显式 null 也通过（nullish 兼容两种表达）", () => {
+    expect(rpcRequestEnvelopeSchema.safeParse(envelope({ approvalScope: null })).success).toBe(
+      true,
+    );
+  });
+
+  it("完整 scope 通过", () => {
+    const r = rpcRequestEnvelopeSchema.safeParse(
+      envelope({
+        approvalId: "ap-1",
+        approvalScope: {
+          command: "browser.click",
+          threadId: "t-1",
+          tabId: "tab-1",
+          url: "https://x/a",
+          expiresAt: 99,
+        },
+      }),
+    );
+    expect(r.success).toBe(true);
+  });
+
+  it("缺省 approvalScope 时签名载荷与不传该键完全一致（向后兼容硬约束）", () => {
+    const withoutKey = getEnvelopeSignPayload(envelope() as never);
+    const withUndefined = getEnvelopeSignPayload(envelope({ approvalScope: undefined }) as never);
+    // undefined 经 JSON.stringify 会被丢弃 → 载荷一致
+    expect(withUndefined).toBe(withoutKey);
+  });
+
+  it("scope 缺失但 command 字段为空 → schema 拒绝", () => {
+    expect(approvalScopeSchema.safeParse({ threadId: "t", expiresAt: 1 }).success).toBe(false);
+  });
+
+  it("scope 参与签名：有 scope 与无 scope 的载荷不同（防篡改）", () => {
+    const noScope = getEnvelopeSignPayload(envelope() as never);
+    const withScope = getEnvelopeSignPayload(
+      envelope({
+        approvalScope: { command: "browser.click", threadId: "t-1", expiresAt: 99 },
+      }) as never,
+    );
+    expect(withScope).not.toBe(noScope);
   });
 });

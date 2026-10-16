@@ -13,6 +13,26 @@
 import { z } from "zod";
 
 /**
+ * 审批范围 schema。
+ *
+ * 只在 Server 携带 approvalId 时出现。可选（nullable + optional）以保证**向后兼容**：
+ * 服务端尚未实现审批时信封不含该字段，canonical 签名载荷与现状完全一致，验签不受影响；
+ * 一旦出现则必须完整，由 Desktop 严格校验归属（见 lib/desktop/approval#validateApprovalScope）。
+ *
+ * 注意：本字段参与 canonicalSerialize，因此它一旦出现即被签名覆盖，
+ * 服务端必须把它一并计入自己的签名载荷。
+ */
+export const approvalScopeSchema = z.object({
+  command: z.string().min(1),
+  threadId: z.string().min(1),
+  tabId: z.string().min(1).optional(),
+  url: z.string().min(1).optional(),
+  expiresAt: z.number().int().positive(),
+});
+
+export type ApprovalScopePayload = z.infer<typeof approvalScopeSchema>;
+
+/**
  * RPC 请求信封 schema（Server → Desktop）。
  */
 export const rpcRequestEnvelopeSchema = z.object({
@@ -24,6 +44,8 @@ export const rpcRequestEnvelopeSchema = z.object({
   tabId: z.string().nullable(),
   runId: z.string().nullable(),
   approvalId: z.string().nullable(),
+  /** 审批归属范围；缺省表示服务端未提供，此时 Desktop 拒绝需要审批的命令。 */
+  approvalScope: approvalScopeSchema.nullish(),
   command: z.string().min(1),
   payload: z.unknown(),
   issuedAt: z.number().int().positive(),

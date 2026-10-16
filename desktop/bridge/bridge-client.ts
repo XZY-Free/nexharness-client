@@ -19,7 +19,7 @@
  * - 收到 auth_failed 后进入 revoked 状态，不自动重连
  */
 import { WebSocket } from "ws";
-import { decideApproval } from "../../lib/desktop/approval";
+import { decideApproval, validateApprovalScope } from "../../lib/desktop/approval";
 import {
   type ClientMessage,
   type RpcRequestMessage,
@@ -462,8 +462,48 @@ export class BridgeClient {
       });
       return;
     }
+    // 审批归属校验（Desktop 不盲信 Server）：approvalId 存在时，必须携带能被本端
+    // 独立核验的 scope，且 scope 精确覆盖当前 command + threadId + tabId + url + 未过期。
+    // 缺 scope 一律拒绝——否则 approvalId 退化成"只要非空即通过"的橡皮图章。
+    if (validation.envelope.approvalId) {
+      const scope = validation.envelope.approvalScope;
+      if (!scope) {
+        this.sendRpcResult(requestId, false, null, {
+          code: "approval_scope_missing",
+          message: "审批缺少归属范围，Desktop 拒绝执行",
+          detail: null,
+        });
+        return;
+      }
+      const scopeCheck = validateApprovalScope(
+        {
+          command: scope.command,
+          threadId: scope.threadId,
+          tabId: scope.tabId,
+          url: scope.url,
+          expiresAt: scope.expiresAt,
+        },
+        validation.envelope.command,
+        {
+          ...(validation.envelope.payload as Record<string, unknown>),
+          threadId: validation.envelope.threadId,
+        },
+        Date.now(),
+      );
+      if (!scopeCheck.ok) {
+        this.sendRpcResult(requestId, false, null, {
+          code: "approval_scope_invalid",
+          message: `审批范围校验失败：${scopeCheck.reason}`,
+          detail: null,
+        });
+        return;
+      }
+    }
 
     // 2. nonce 去重，防止重放
+    // 顺带清理过期条目：FIFO 容量淘汰会把**未过期**的 nonce 挤出去，使被挤掉的
+    // 请求获得第二次执行机会。主动清理已过期条目可让容量只承载有效窗口。
+    this.nonceDedup.cleanup(Date.now());
     if (!this.nonceDedup.checkAndAdd(validation.envelope.nonce, validation.envelope.expiresAt)) {
       this.sendRpcResult(validation.envelope.requestId, false, null, {
         code: "rpc_replay",
