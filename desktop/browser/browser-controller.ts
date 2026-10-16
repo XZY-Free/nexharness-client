@@ -53,6 +53,7 @@ import { decideCloseTab } from "./tab-lifecycle";
 import type { TabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
+import { createSecureView, resolvePartitionKey } from "./view-factory";
 import { ViewRegistry } from "./view-registry";
 import { type WebContentsLike, registerWebContentsHandlers } from "./web-contents-wiring";
 
@@ -227,24 +228,13 @@ export class BrowserController {
     // 创建 tab 元数据
     const tab = this.tabStore.createTab(threadId, url, opts);
 
-    // 获取或创建 Session partition
-    // userId 为空时使用 threadId 作为 partition 键，保证不同 Thread 的 session 隔离
-    const effectiveUserId = userId && userId.length > 0 ? userId : threadId;
+    // Session partition（规则见 view-factory#resolvePartitionKey）
     const partition = opts?.incognito
       ? this.sessionManager.createIncognitoPartition(threadId)
-      : this.sessionManager.getOrCreateBrowserPartition(effectiveUserId);
+      : this.sessionManager.getOrCreateBrowserPartition(resolvePartitionKey({ userId, threadId }));
 
-    // 创建 WebContentsView
-    const view = new WebContentsView({
-      webPreferences: {
-        partition,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        webSecurity: true,
-        allowRunningInsecureContent: false,
-      },
-    });
+    // 创建 WebContentsView（安全参数集中在 view-factory，不内联散落）
+    const view = createSecureView(WebContentsView, { partition }) as WebContentsView;
 
     // 注册 view
     const activate = opts?.activate ?? true;
