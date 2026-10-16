@@ -1,5 +1,5 @@
 /**
- * ：RPC 信封 schema 和规范序列化。
+ * RPC 信封 schema 和规范序列化。
  *
  * Server 和 Desktop 之间的 RPC 通信使用严格类型的信封结构。所有信封必须通过
  * zod schema 校验，确保字段完整、类型正确。签名覆盖信封的规范序列化，

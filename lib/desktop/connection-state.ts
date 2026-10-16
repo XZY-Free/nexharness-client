@@ -1,5 +1,5 @@
 /**
- * ：Desktop 连接状态机。
+ * Desktop 连接状态机。
  *
  * Desktop 与 Server 的 WebSocket 连接经过严格的状态机管理，只有处于
  * authenticated 状态时才能收发 RPC 请求。状态转换失败抛出错误，防止

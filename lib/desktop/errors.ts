@@ -1,5 +1,5 @@
 /**
- * ：Desktop 稳定错误码。
+ * Desktop 稳定错误码。
  *
  * Server 和 Desktop 共享的错误码枚举。所有 IPC/RPC 错误返回使用这些稳定码，
  * 前端根据 code 而非 message 做分支。新增错误码只能追加，不修改已有码值。
