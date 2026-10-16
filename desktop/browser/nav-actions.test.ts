@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { MAX_URL_LENGTH, isValidNavUrl, normalizeUrl, validateNavAction } from "./nav-actions";
+import {
+  MAX_URL_LENGTH,
+  dispatchNavAction,
+  isValidNavUrl,
+  normalizeUrl,
+  validateNavAction,
+} from "./nav-actions";
 
 /**
  * 导航校验是「AI/用户能命令浏览器去哪」的信任边界。
@@ -113,5 +119,96 @@ describe("normalizeUrl — 地址栏输入补全", () => {
 
   it("超长输入返回 null", () => {
     expect(normalizeUrl("a".repeat(MAX_URL_LENGTH + 10))).toBeNull();
+  });
+});
+
+describe("dispatchNavAction — 分发与可执行性判定", () => {
+  function fakeTarget(over = {}) {
+    const calls: string[] = [];
+    return {
+      calls,
+      loadURL: (u: string) => {
+        calls.push(`loadURL:${u}`);
+      },
+      reload: () => calls.push("reload"),
+      stop: () => calls.push("stop"),
+      navigationHistory: {
+        canGoBack: () => true,
+        canGoForward: () => false,
+        goBack: () => calls.push("goBack"),
+        goForward: () => calls.push("goForward"),
+      },
+      ...over,
+    };
+  }
+
+  it("navigate → loadURL 且标记 loading", () => {
+    const t = fakeTarget();
+    const r = dispatchNavAction(t, { type: "navigate", url: "https://x/a" });
+    expect(r).toEqual({ acted: true, markLoading: true, url: "https://x/a" });
+    expect(t.calls).toEqual(["loadURL:https://x/a"]);
+  });
+
+  it("back 在 canGoBack=true 时执行", () => {
+    const t = fakeTarget();
+    expect(dispatchNavAction(t, { type: "back" })).toEqual({ acted: true, markLoading: false });
+    expect(t.calls).toEqual(["goBack"]);
+  });
+
+  it("back 在 canGoBack=false 时**不**执行（acted=false）", () => {
+    const t = fakeTarget({
+      navigationHistory: {
+        canGoBack: () => false,
+        canGoForward: () => false,
+        goBack: () => t.calls.push("goBack"),
+        goForward: () => t.calls.push("goForward"),
+      },
+    });
+    expect(dispatchNavAction(t, { type: "back" })).toEqual({ acted: false, markLoading: false });
+    expect(t.calls).toEqual([]);
+  });
+
+  it("forward 在 canGoForward=false 时不执行", () => {
+    const t = fakeTarget();
+    expect(dispatchNavAction(t, { type: "forward" }).acted).toBe(false);
+    expect(t.calls).toEqual([]);
+  });
+
+  it("forward 在 canGoForward=true 时执行", () => {
+    const t = fakeTarget({
+      navigationHistory: {
+        canGoBack: () => false,
+        canGoForward: () => true,
+        goBack: () => t.calls.push("goBack"),
+        goForward: () => t.calls.push("goForward"),
+      },
+    });
+    expect(dispatchNavAction(t, { type: "forward" }).acted).toBe(true);
+    expect(t.calls).toEqual(["goForward"]);
+  });
+
+  it("reload / stop 直接执行且不标记 loading", () => {
+    const t1 = fakeTarget();
+    expect(dispatchNavAction(t1, { type: "reload" })).toEqual({ acted: true, markLoading: false });
+    expect(t1.calls).toEqual(["reload"]);
+    const t2 = fakeTarget();
+    expect(dispatchNavAction(t2, { type: "stop" })).toEqual({ acted: true, markLoading: false });
+    expect(t2.calls).toEqual(["stop"]);
+  });
+
+  it("未知动作 → acted=false（不抛）", () => {
+    const t = fakeTarget();
+    expect(dispatchNavAction(t, { type: "nonsense" })).toEqual({
+      acted: false,
+      markLoading: false,
+    });
+    expect(t.calls).toEqual([]);
+  });
+
+  it("navigate 无 url → 用空串（不崩）", () => {
+    const t = fakeTarget();
+    const r = dispatchNavAction(t, { type: "navigate" });
+    expect(r.url).toBe("");
+    expect(t.calls).toEqual(["loadURL:"]);
   });
 });

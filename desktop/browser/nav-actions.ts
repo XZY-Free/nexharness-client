@@ -146,3 +146,73 @@ export function normalizeUrl(input: string): string | null {
   const withProtocol = `https://${trimmed}`;
   return isValidNavUrl(withProtocol) ? withProtocol : null;
 }
+
+// ─── 导航动作分发 ─────────────────────────────────────────────
+
+/**
+ * 导航目标的最小接口（Electron WebContents 的导航能力子集）。
+ */
+export interface NavTargetLike {
+  loadURL(url: string): Promise<void> | void;
+  reload(): void;
+  stop(): void;
+  navigationHistory: {
+    canGoBack(): boolean;
+    canGoForward(): boolean;
+    goBack(): void;
+    goForward(): void;
+  };
+}
+
+/** 分发结果：是否执行了导航 + 是否需把 tab 标记为 loading。 */
+export interface NavDispatchResult {
+  /** 动作是否被实际执行（back/forward 在不可用时为 false）。 */
+  readonly acted: boolean;
+  /** 是否应把 tab 状态置为 loading（仅 navigate 动作）。 */
+  readonly markLoading: boolean;
+  /** navigate 动作的目标 URL（供状态更新用）。 */
+  readonly url?: string;
+}
+
+/**
+ * 把已验证的导航动作分发到 target 上。
+ *
+ * 抽出的价值：原 `BrowserController.navigate` 是一段 switch 分发，与 Electron 耦合
+ * 但**逻辑本身可测** —— 本函数只依赖 NavTargetLike 接口，可用替身验证
+ * "back 在 canGoBack=false 时不执行"这类规则。
+ *
+ * @param target 导航目标（真 WebContents 或替身）
+ * @param action 已通过 validateNavAction 的动作
+ */
+export function dispatchNavAction(
+  target: NavTargetLike,
+  action: { type: string; url?: string },
+): NavDispatchResult {
+  switch (action.type) {
+    case "navigate": {
+      const url = action.url ?? "";
+      void target.loadURL(url);
+      return { acted: true, markLoading: true, url };
+    }
+    case "back": {
+      if (!target.navigationHistory.canGoBack()) return { acted: false, markLoading: false };
+      target.navigationHistory.goBack();
+      return { acted: true, markLoading: false };
+    }
+    case "forward": {
+      if (!target.navigationHistory.canGoForward()) return { acted: false, markLoading: false };
+      target.navigationHistory.goForward();
+      return { acted: true, markLoading: false };
+    }
+    case "reload": {
+      target.reload();
+      return { acted: true, markLoading: false };
+    }
+    case "stop": {
+      target.stop();
+      return { acted: true, markLoading: false };
+    }
+    default:
+      return { acted: false, markLoading: false };
+  }
+}

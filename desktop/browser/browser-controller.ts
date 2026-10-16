@@ -38,7 +38,12 @@ import {
   type DownloadManagerLike,
   handleWillDownload,
 } from "./download-coordinator";
-import { normalizeUrl, validateNavAction } from "./nav-actions";
+import {
+  type NavTargetLike,
+  dispatchNavAction,
+  normalizeUrl,
+  validateNavAction,
+} from "./nav-actions";
 import type { BrowserNavAction } from "./nav-actions";
 import { PageInsightsStore } from "./page-insights-store";
 import { checkUrlSafety } from "./permission-policy";
@@ -333,31 +338,15 @@ export class BrowserController {
     const result = validateNavAction(action);
     if (!result.ok || !result.action) return false;
 
-    const wc = view.webContents;
-    switch (result.action.type) {
-      case "navigate":
-        void wc.loadURL(result.action.url);
-        this.tabStore.updateTab(threadId, tabId, {
-          url: result.action.url,
-          loadState: "loading",
-        });
-        break;
-      case "back":
-        if (wc.navigationHistory.canGoBack()) {
-          wc.navigationHistory.goBack();
-        }
-        break;
-      case "forward":
-        if (wc.navigationHistory.canGoForward()) {
-          wc.navigationHistory.goForward();
-        }
-        break;
-      case "reload":
-        wc.reload();
-        break;
-      case "stop":
-        wc.stop();
-        break;
+    // 分发逻辑抽到 nav-actions#dispatchNavAction（只依赖 NavTargetLike，可替身测试）
+    const outcome = dispatchNavAction(view.webContents as unknown as NavTargetLike, result.action);
+    if (!outcome.acted) return false;
+
+    if (outcome.markLoading && outcome.url !== undefined) {
+      this.tabStore.updateTab(threadId, tabId, {
+        url: outcome.url,
+        loadState: "loading",
+      });
     }
     return true;
   }
