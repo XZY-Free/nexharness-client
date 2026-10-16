@@ -12,7 +12,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "vitest run",
+    "test": "vitest run && node scripts/check-test-collection.mjs",
     "test:watch": "vitest",
     "test:e2e": "node e2e/smoke.mjs",
     "build:desktop-renderer": "node scripts/build-desktop-renderer.mjs",
@@ -21,7 +21,8 @@
     "dev:desktop": "pnpm build:desktop && pnpm rebuild:desktop-native && electron desktop/package-app",
     "package:desktop": "pnpm build:desktop && pnpm rebuild:desktop-native && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --config desktop/electron-builder.yml --mac --arm64",
     "package:desktop:signed": "pnpm build:desktop && pnpm rebuild:desktop-native && electron-builder --config desktop/electron-builder.yml --mac --arm64",
-    "test:collect-check": "node scripts/check-test-collection.mjs"
+    "test:collect-check": "node scripts/check-test-collection.mjs",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
