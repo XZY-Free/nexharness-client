@@ -149,6 +149,11 @@ export function mergeBrandOverlay(base: BrandContract, overlay: BrandPatch): Bra
 /** 从未知 JSON（DB document / branding.json）宽松解析为 patch；坏字段抛校验错。 */
 export function parseBrandPatch(input: Record<string, unknown>): BrandPatch {
   const patch: Record<string, unknown> = {};
+  // 防御：DB document / branding.json 可能为 null 或非对象；宽松解析产出空 patch，
+  // 不在读取字段时崩溃（真正校验由 applyBrandPatch 负责）。
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return patch as BrandPatch;
+  }
   if (input.name !== undefined) patch.name = input.name;
   if (input.tagline !== undefined) patch.tagline = input.tagline;
   if (input.icon !== undefined) patch.icon = input.icon;
