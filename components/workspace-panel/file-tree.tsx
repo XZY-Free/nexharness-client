@@ -5,6 +5,21 @@ import { WorkspaceFileIcon } from "./workspace-file-icon";
 
 export const FILE_TREE_REFRESH_MS = 1500;
 
+/** 连续失败后的轮询上限（退避目标）。 */
+export const FILE_TREE_MAX_REFRESH_MS = 30_000;
+
+/**
+ * 下一次轮询间隔：成功 → 基础间隔；连续失败 → 指数退避（封顶 30s）。
+ *
+ * 文件树变化是低频事件，而 1.5s 轮询是这个面板里频率最高的请求。服务端异常/断网时
+ * 若仍按 1.5s 空转，会持续制造失败请求；退避让故障期的请求量随时间收敛。
+ */
+export function nextRefreshDelay(consecutiveFailures: number): number {
+  if (consecutiveFailures <= 0) return FILE_TREE_REFRESH_MS;
+  const backoff = FILE_TREE_REFRESH_MS * 2 ** consecutiveFailures;
+  return Math.min(backoff, FILE_TREE_MAX_REFRESH_MS);
+}
+
 /**
  * V5-B2：工作区文件树。
  *
@@ -154,22 +169,26 @@ export function FileTree({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   // 初次打开立即加载；面板保持打开时静默轮询，同步 agent 后续写入的文件。
+  // 轮询用「自调度 setTimeout」而非固定 setInterval：失败时指数退避，
+  // 且页面切到后台（document.hidden）时跳过该轮，避免不可见时白跑请求。
   useEffect(() => {
     let cancelled = false;
     let inFlight = false;
     let hasLoaded = false;
+    let failures = 0;
+    let timer: number | undefined;
     setFiles(undefined);
     setError(null);
 
-    const load = async () => {
-      if (cancelled || inFlight) return;
+    const load = async (): Promise<boolean> => {
+      if (cancelled || inFlight) return false;
       inFlight = true;
       try {
         const response = await apiFetch(`/api/threads/${threadId}/workspace`, {
           cache: "no-store",
         });
         const json = (await response.json()) as { threadId: string; files: string[] };
-        if (cancelled) return;
+        if (cancelled) return false;
         if (response.ok && Array.isArray(json.files)) {
           const nextFiles = json.files;
           setFiles((prev) =>
@@ -181,21 +200,31 @@ export function FileTree({
           );
           setError(null);
           hasLoaded = true;
-        } else if (!hasLoaded) {
-          setError("无法加载文件列表");
+          return true;
         }
+        if (!hasLoaded) setError("无法加载文件列表");
+        return false;
       } catch {
         if (!cancelled && !hasLoaded) setError("无法加载文件列表");
+        return false;
       } finally {
         inFlight = false;
       }
     };
 
-    void load();
-    const timer = window.setInterval(() => void load(), FILE_TREE_REFRESH_MS);
+    const schedule = async () => {
+      if (cancelled) return;
+      // 页面不可见时不发请求，仅按基础间隔重新排队（回到前台立刻补齐）。
+      const ok = document.hidden ? true : await load();
+      failures = ok ? 0 : failures + 1;
+      if (cancelled) return;
+      timer = window.setTimeout(() => void schedule(), nextRefreshDelay(failures));
+    };
+
+    void schedule();
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [threadId]);
 

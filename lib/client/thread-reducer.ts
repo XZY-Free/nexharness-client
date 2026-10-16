@@ -52,8 +52,37 @@ import type {
 /** 单个 Turn 的暂存增量上限（有界暂存，防止基线长期不来时无限堆积）。 */
 export const MAX_PENDING_TRANSIENT_PER_TURN = 64;
 
+/**
+ * event_id 去重集的有界窗口大小。
+ *
+ * 去重集原先只增不减（仅 snapshot.loaded 时重置），长 Thread 里会随事件数单调增长。
+ * 这里改为只保留最近 N 条。
+ *
+ * 正确性前提：**sequence 单调闸门（`event.sequence <= lastAppliedEventSequence`
+ * 即丢弃）独立存在**（见下方 event.received 的第 2 步）。被淘汰的都是很久以前的
+ * event_id，其 sequence 早已落在 lastAppliedEventSequence 之下，即便重复到达也会被
+ * 那道闸门挡掉；去重集只承担「同一 sequence 附近的重复投递」这一近距离场景
+ * （重复投递的 id 必已 applied，其 sequence 亦不高于游标），因此有界窗口不影响幂等语义。
+ */
+export const MAX_APPLIED_EVENT_IDS = 2000;
+
 /** 本地临时正文的 Item id 前缀（snapshot 合并据此识别"非服务端 Item"）。 */
 const TRANSIENT_ITEM_PREFIX = "stream-";
+
+/**
+ * 有界裁剪 event_id 去重集：超出上限时按插入序淘汰最旧条目（Set 保序）。
+ */
+function trimAppliedEventIds(ids: Set<string>): Set<string> {
+  const overflow = ids.size - MAX_APPLIED_EVENT_IDS;
+  if (overflow <= 0) return ids;
+  let dropped = 0;
+  for (const id of ids) {
+    if (dropped >= overflow) break;
+    ids.delete(id);
+    dropped++;
+  }
+  return ids;
+}
 
 /** 线上代际（snake_case）→ 契约代际（camelCase）。 */
 function toContractGeneration(generation: ClientTransientGeneration): ThreadTransientGeneration {
@@ -157,16 +186,23 @@ function hasCompletedReplyForTurn(items: readonly ClientItem[], turnId: string):
  * 应用一条**已确认**的同代际增量：追加到该 tuple 自己的临时正文（幂等按 transient_id 去重）。
  *
  * 返回原数组表示无变化（重复 transient_id / 无正文 / 已有正式回复）。
+ *
+ * 性能：这是**每个流式 token** 都会走的热路径。原实现有两处 O(n) 线性扫描
+ * （`items.find` 找同 id + `insertItemSorted` 内部再次 `findIndex`）。改为：
+ * - 用 `itemsById` 做 O(1) 定位（该映射已随状态维护）；
+ * - 已存在时走**单趟 map 替换**（item_sequence 不变，无需重排）；
+ * - 新增时用**追加快路径**（sequence 大于末尾即 push，免二分 + 免二次扫描）。
  */
 function applyTransientDelta(
   items: readonly ClientItem[],
+  itemsById: Readonly<Record<string, ClientItem>>,
   delta: ClientTransientDelta,
 ): readonly ClientItem[] {
   if (!delta.delta) return items;
   if (hasCompletedReplyForTurn(items, delta.turn_id)) return items;
 
   const transientId = transientItemId(delta.turn_id, delta.generation);
-  const existing = items.find((candidate) => candidate.id === transientId);
+  const existing = itemsById[transientId];
   const existingText =
     existing &&
     typeof existing.content === "object" &&
@@ -198,7 +234,13 @@ function applyTransientDelta(
     },
     created_at: existing?.created_at ?? delta.occurred_at,
   };
-  return insertItemSorted(items, item);
+
+  // 已存在：sequence 未变 → 单趟替换，保持数组顺序不变。
+  if (existing) {
+    return items.map((candidate) => (candidate.id === transientId ? item : candidate));
+  }
+  // 新增：sequence 取当前最大值 +1，必然落在末尾 → 追加（免二分查找）。
+  return [...items, item];
 }
 
 /** 有界暂存：追加一条未确认增量（超上限丢最旧，保持到达顺序）。 */
@@ -576,8 +618,9 @@ export function threadProjectionReducer(
 
       // 4. 应用到 Item 投影
       const newItems = applyEventToItems(state, event);
-      const newAppliedEventIds = new Set(state.appliedEventIds);
-      newAppliedEventIds.add(event.event_id);
+      const newAppliedEventIds = trimAppliedEventIds(
+        new Set(state.appliedEventIds).add(event.event_id),
+      );
 
       // 过程透明 live ring：动作事件投影入 activity；completed 结果合并回 proposed 行块
       let activity = state.activity;
@@ -607,7 +650,7 @@ export function threadProjectionReducer(
       if (delta.thread_id !== state.threadId) return state;
       switch (classifyTransientDelta(state.generationBaseline, delta)) {
         case "apply": {
-          const items = applyTransientDelta(state.items, delta);
+          const items = applyTransientDelta(state.items, state.itemsById, delta);
           if (items === state.items) return state;
           return { ...state, items, itemsById: buildItemsById(items) };
         }
@@ -638,11 +681,18 @@ export function threadProjectionReducer(
       );
       // 2. 重放暂存：只保留仍需等待权威事实的桶，其余按新基线分类处理。
       const remaining: Record<string, readonly ClientTransientDelta[]> = {};
+      // 重放是**低频路径**（每次权威换代一次，且每 turn 暂存上限 64 条），
+      // 这里按迭代重建索引以保持 O(1) 定位，代价可忽略。
+      let replayIndex = buildItemsById(items);
       for (const [, deltas] of Object.entries(state.pendingTransients)) {
         for (const delta of deltas) {
           const disposition = classifyTransientDelta(baseline, delta);
           if (disposition === "apply") {
-            items = applyTransientDelta(items, delta);
+            const next = applyTransientDelta(items, replayIndex, delta);
+            if (next !== items) {
+              items = next;
+              replayIndex = buildItemsById(items);
+            }
           } else if (disposition === "stage") {
             remaining[delta.turn_id] = [...(remaining[delta.turn_id] ?? []), delta];
           }

@@ -91,14 +91,39 @@ function rendererFilePath(rendererRoot: string, pathname: string): string | null
   return candidate === rendererRoot || candidate.startsWith(`${rendererRoot}/`) ? candidate : null;
 }
 
-async function sendFile(response: ServerResponse, filename: string): Promise<boolean> {
+/** Vite 构建产物中「内容哈希命名」的资产目录（可安全长缓存）。 */
+const HASHED_ASSET_DIR = "assets";
+
+/**
+ * 计算静态资源的缓存策略。
+ *
+ * - `assets/**`：Vite 以内容哈希命名（如 `python-B6aJPvgy.js`），文件内容与文件名
+ *   一一绑定，可 `immutable` 长缓存。不加这条会让 622KB 的 shiki wasm、377KB 主
+ *   chunk 在每次刷新/窗口重建时全量重读重传。
+ * - 其余（尤其 `index.html`）：**必须 no-store**——它是引用各哈希资产的入口，
+ *   一旦被缓存就会在下次构建后仍指向旧资产的路径。
+ */
+function cacheControlFor(filename: string, rendererRoot: string): string {
+  const relative = filename.startsWith(`${rendererRoot}/`)
+    ? filename.slice(rendererRoot.length + 1)
+    : filename;
+  return relative.startsWith(`${HASHED_ASSET_DIR}/`)
+    ? "public, max-age=31536000, immutable"
+    : "no-store";
+}
+
+async function sendFile(
+  response: ServerResponse,
+  filename: string,
+  rendererRoot: string,
+): Promise<boolean> {
   try {
     const fileStat = await stat(filename);
     if (!fileStat.isFile()) return false;
     const content = await readFile(filename);
     response.writeHead(200, {
       "content-type": CONTENT_TYPES[extname(filename)] ?? "application/octet-stream",
-      "cache-control": "no-store",
+      "cache-control": cacheControlFor(filename, rendererRoot),
     });
     response.end(content);
     return true;
@@ -193,7 +218,7 @@ export async function startLocalRendererServer(
 
     const filename = rendererFilePath(rendererRoot, url.pathname);
     if (filename && extname(filename)) {
-      void sendFile(response, filename).then((served) => {
+      void sendFile(response, filename, rendererRoot).then((served) => {
         if (!served && !response.writableEnded) response.writeHead(404).end();
       });
       return;
@@ -202,7 +227,7 @@ export async function startLocalRendererServer(
       response.writeHead(404).end();
       return;
     }
-    void sendFile(response, resolve(rendererRoot, "index.html")).then((served) => {
+    void sendFile(response, resolve(rendererRoot, "index.html"), rendererRoot).then((served) => {
       if (!served && !response.writableEnded) response.writeHead(500).end();
     });
   });

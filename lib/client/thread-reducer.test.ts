@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_APPLIED_EVENT_IDS,
   MAX_PENDING_TRANSIENT_PER_TURN,
   classifyTransientDelta,
   createInitialState,
@@ -682,5 +683,156 @@ describe("transientItemId / readTransientGeneration", () => {
     expect(readTransientGeneration(item({ id: "official" }))).toBeNull();
     expect(readTransientGeneration(item({ id: "stream-x", content: { noGen: 1 } }))).toBeNull();
     expect(readTransientGeneration(item({ id: "stream-x", content: null }))).toBeNull();
+  });
+});
+
+/**
+ * appliedEventIds 有界化。去重集原先只增不减（仅 snapshot 重置）。
+ * 正确性依赖：被淘汰的 event_id 其 sequence 早已低于游标，重复到达会被
+ * sequence 单调闸门挡掉——因此有界窗口不影响幂等语义。
+ */
+describe("appliedEventIds — 有界去重窗口", () => {
+  it("去重集大小被限制在 MAX_APPLIED_EVENT_IDS 内", () => {
+    let state = createInitialState(THREAD);
+    // 逐条应用，绕过 gap 检查：snapshot 后第一条不限连续，之后必须连续；
+    // 这里显式保持 sequence 连续递增。
+    const total = MAX_APPLIED_EVENT_IDS + 50;
+    for (let i = 1; i <= total; i++) {
+      state = threadProjectionReducer(state, {
+        type: "event.received",
+        event: event({ event_id: `e${i}`, sequence: i, item_id: `i${i}` }),
+      });
+    }
+    expect(state.appliedEventIds.size).toBeLessThanOrEqual(MAX_APPLIED_EVENT_IDS);
+    // 游标仍正确推进（有界化不得影响顺序状态）
+    expect(state.lastAppliedEventSequence).toBe(total);
+  });
+
+  it("窗口内重复 event_id 仍被去重", () => {
+    let state = createInitialState(THREAD);
+    state = threadProjectionReducer(state, {
+      type: "event.received",
+      event: event({ event_id: "dup", sequence: 1, item_id: "a" }),
+    });
+    const before = state;
+    const after = threadProjectionReducer(before, {
+      type: "event.received",
+      event: event({ event_id: "dup", sequence: 1, item_id: "a" }),
+    });
+    // 命中去重 → 原 state 返回
+    expect(after).toBe(before);
+  });
+
+  it("被淘汰的旧 event_id 重复到达仍被 sequence 闸门拦下（不重复插入）", () => {
+    let state = createInitialState(THREAD);
+    const total = MAX_APPLIED_EVENT_IDS + 50;
+    for (let i = 1; i <= total; i++) {
+      state = threadProjectionReducer(state, {
+        type: "event.received",
+        event: event({ event_id: `e${i}`, sequence: i, item_id: `i${i}` }),
+      });
+    }
+    const itemsBefore = state.items.length;
+    // "e1" 早已被挤出窗口，但 sequence=1 <= 游标 → 丢弃
+    const after = threadProjectionReducer(state, {
+      type: "event.received",
+      event: event({ event_id: "e1", sequence: 1, item_id: "i1" }),
+    });
+    expect(after).toBe(state);
+    expect(after.items.length).toBe(itemsBefore);
+  });
+});
+
+/**
+ * 热路径优化后的不变量：临时正文追加必须保持 items 按 item_sequence 升序，
+ * 且已存在时只替换不重排（这是把二分插入换成「替换 + 追加」的正确性前提）。
+ */
+describe("applyTransientDelta 路径优化 — 顺序不变量", () => {
+  const baseline: ClientGenerationBaseline = {
+    thread_id: THREAD,
+    baseline_sequence: 10,
+    issued_revision: 1,
+    generations: [{ turn_id: "turn-1", generation: gen() }],
+  };
+
+  function delta(over: Partial<ClientTransientDelta> = {}): ClientTransientDelta {
+    return {
+      transient_id: "d1",
+      thread_id: THREAD,
+      turn_id: "turn-1",
+      generation: gen(),
+      occurred_at: "2026-01-01T00:00:00Z",
+      delta: "字",
+      ...over,
+    };
+  }
+
+  function stateWithBaseline() {
+    return threadProjectionReducer(createInitialState(THREAD), {
+      type: "stream.generation",
+      baseline,
+    });
+  }
+
+  it("多次追加后 items 仍按 item_sequence 严格升序", () => {
+    let state = stateWithBaseline();
+    for (let i = 0; i < 20; i++) {
+      state = threadProjectionReducer(state, {
+        type: "stream.delta",
+        event: delta({ transient_id: `d${i}`, delta: `${i}` }),
+      });
+    }
+    const seqs = state.items.map((it) => it.item_sequence);
+    const sorted = [...seqs].sort((a, b) => a - b);
+    expect(seqs).toEqual(sorted);
+    // 临时正文只有一条（同代际 tuple），且文本按到达顺序拼接
+    expect(state.items.length).toBe(1);
+    expect((state.items[0]?.content as { text: string }).text).toBe(
+      Array.from({ length: 20 }, (_, i) => i).join(""),
+    );
+  });
+
+  it("追加时新 item_sequence 为当前最大值 +1", () => {
+    let state = stateWithBaseline();
+    state = threadProjectionReducer(state, {
+      type: "stream.delta",
+      event: delta({ transient_id: "a", delta: "a" }),
+    });
+    const firstSeq = state.items[0]?.item_sequence;
+    // 同 tuple 再追加不产生新条（仍一条），顺序稳定
+    state = threadProjectionReducer(state, {
+      type: "stream.delta",
+      event: delta({ transient_id: "b", delta: "b" }),
+    });
+    expect(state.items.length).toBe(1);
+    expect(state.items[0]?.item_sequence).toBe(firstSeq);
+  });
+
+  it("重复 transient_id 幂等（不重复拼接、不改变数组）", () => {
+    let state = stateWithBaseline();
+    state = threadProjectionReducer(state, {
+      type: "stream.delta",
+      event: delta({ transient_id: "dup", delta: "X" }),
+    });
+    const before = state;
+    state = threadProjectionReducer(state, {
+      type: "stream.delta",
+      event: delta({ transient_id: "dup", delta: "X" }),
+    });
+    expect(state).toBe(before);
+    expect((state.items[0]?.content as { text: string }).text).toBe("X");
+  });
+
+  it("itemsById 随每次追加保持同步（O(1) 定位的前提）", () => {
+    let state = stateWithBaseline();
+    for (let i = 0; i < 5; i++) {
+      state = threadProjectionReducer(state, {
+        type: "stream.delta",
+        event: delta({ transient_id: `t${i}`, delta: `${i}` }),
+      });
+      for (const item of state.items) {
+        expect(state.itemsById[item.id]).toBe(item);
+      }
+    }
   });
 });
