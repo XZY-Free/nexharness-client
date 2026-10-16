@@ -95,7 +95,7 @@ export function ModelSelector({
                       setOpen(false);
                       setQ("");
                     }}
-                    className={`flex w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left font-mono text-[13px] transition ${
+                    className={`flex w-full items-center justify-between gap-2 rounded-[var(--radius-control)] px-3 py-2 text-left font-mono text-[13px] transition ${
                       active
                         ? "bg-[var(--accent-soft)] text-[var(--primary)]"
                         : "text-[var(--foreground)] hover:bg-[var(--muted)]"

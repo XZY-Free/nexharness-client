@@ -11,18 +11,14 @@
 @source not "../.next*/**";
 
 /* ════════════════════════════════════════════════════════════════════════
- * W1-3 语义 token 体系（NexHarness UI 重构第一步）
- * 规格：docs/solutions/desktop-ui-redesign/01-foundation-and-shell.md §3
+ * 语义 token 体系
  *
- * 结构顺序（方案 §W1-3 执行要点，不得调整）：
- *   1. 新语义 token（:root 浅色 + .dark 暗色类选择器）
- *   2. @theme inline 映射
- *   3. @deprecated 别名段（旧 token → 新 token，保证存量零回归）
- *   4. .codex 块（原样冻结，第三步清退）
- *   5. 其余既有全局样式
+ * 结构：
+ *   1. 语义 token（:root 浅色 + .dark 暗色类选择器）
+ *   2. @theme inline 映射（Tailwind v4 CSS-first）
+ *   3. 其余全局样式
  *
- * 配色原则：色值沿用现有 NexHarness v2，仅做命名收敛，不重新配色
- * （方案 §3.1：浅色以现有 :root 值为基准，暗色以现有 :root.dark 值为基准换算）。
+ * 配色：浅色以 --foreground 单色派生；品牌蓝只做链接、焦点环、运行态指示。
  * ════════════════════════════════════════════════════════════════════════ */
 
 /* ─── 1. 新语义 token · 浅色（:root）──────────────────────────────────
@@ -94,6 +90,22 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: color-mix(in oklab, var(--foreground) 8%, transparent);
   --sidebar-ring: #0285ff;
+
+  /* 三级表面 / 弱强调底 / 状态徽章色（原别名段转正） */
+  --surface-raised: color-mix(in oklab, var(--foreground) 6%, #ffffff);
+  --accent-soft: color-mix(in oklab, var(--ring) 10%, #ffffff);
+  --success-surface: color-mix(in oklab, var(--success) 14%, #ffffff);
+  --success-on-surface: color-mix(in oklab, var(--success) 78%, #000000);
+  --info: #0a6ed1;
+  --info-surface: color-mix(in oklab, var(--info) 14%, #ffffff);
+  --info-on-surface: color-mix(in oklab, var(--info) 78%, #000000);
+  --warning-surface: color-mix(in oklab, var(--warning) 14%, #ffffff);
+  --warning-on-surface: color-mix(in oklab, var(--warning) 78%, #000000);
+  --destructive-surface: color-mix(in oklab, var(--destructive) 12%, #ffffff);
+  --destructive-on-surface: color-mix(in oklab, var(--destructive) 82%, #000000);
+
+  /* 控件圆角（独立于 --radius 派生档位，保持既有视觉 10px） */
+  --radius-control: 10px;
 }
 
 /* ─── 1. 新语义 token · 暗色（.dark 类选择器）─────────────────────────
@@ -151,6 +163,20 @@
   --sidebar-accent-foreground: oklch(0.94 0.008 260);
   --sidebar-border: oklch(0.32 0.018 260);
   --sidebar-ring: oklch(0.72 0.18 252 / 0.35);
+
+  /* 三级表面 / 弱强调底 / 状态徽章色（原别名段转正） */
+  --surface-raised: oklch(0.28 0.022 260);
+  --accent-soft: oklch(0.3 0.06 252);
+  --success-surface: oklch(0.28 0.06 162);
+  --success-on-surface: oklch(0.8 0.16 162);
+  --info: oklch(0.72 0.14 252);
+  --info-surface: oklch(0.28 0.06 252);
+  --info-on-surface: oklch(0.8 0.16 252);
+  --warning-surface: oklch(0.3 0.08 80);
+  --warning-on-surface: oklch(0.8 0.18 75);
+  --destructive-surface: oklch(0.28 0.08 25);
+  --destructive-on-surface: oklch(0.78 0.22 25);
+  --radius-control: 10px;
 }
 
 /* ─── 2. @theme inline 映射（Tailwind v4 CSS-first）────────────────── */
@@ -230,128 +256,6 @@
     @apply font-sans;
   }
 }
-
-/* ─── 3. @deprecated 别名段（旧 token → 新 token）────────────────────
- * 目的：保证存量组件与 .codex 覆盖块零改动继续工作（方案 §3.3）。
- * 策略：旧 token 名全部保留为别名，值改为 var(--新token) 引用。
- *      找不到一对一新 token 的旧名（soft 系列、success-bg 等）保留原字面值。
- *      别名段只求存量视觉不变，不求优雅。
- * 清退计划：第三步对话流重构时随 .codex 一并删除。
- * ⚠️ 新代码禁止引用旧名。 */
-:root {
-  /* 表面 */
-  --bg: var(--background);
-  --surface: var(--card);
-  --surface-2: var(--muted);
-  --surface-3: oklch(0.94 0.01 260); /* 无新对应，保留字面值 */
-
-  /* 文字 */
-  --fg: var(--foreground);
-  --fg-muted: var(--muted-foreground);
-  --fg-subtle: var(--foreground-subtle);
-
-  /* 描边（--border / --border-strong 与新 token 同名，新 token 已定义，此处不重复） */
-
-  /* 品牌色（旧 --accent → 新 --primary，§3.2 最大陷阱）
-   * 2026-07-26 已清退：存量 var(--accent) 引用已全量改为 var(--primary)，
-   * 新 shadcn --accent（hover 弱强调底）自此生效，ui 组件 hover/高亮恢复正常。 */
-  --accent-hover: oklch(0.54 0.2 252); /* 无新对应，保留字面值 */
-  --accent-fg: var(--primary-foreground);
-  --accent-soft: oklch(0.96 0.025 252); /* 无新对应，保留字面值 */
-  --accent-ring: var(--ring);
-
-  /* 渐变（冻结，随 .codex 清退一并删除——方案 §3.2 末行） */
-  --accent-gradient: linear-gradient(135deg, oklch(0.6 0.18 252) 0%, oklch(0.56 0.22 280) 100%);
-  --accent-gradient-hover: linear-gradient(
-    135deg,
-    oklch(0.56 0.2 252) 0%,
-    oklch(0.52 0.24 280) 100%
-  );
-
-  /* 状态色 */
-  --ok: var(--success);
-  --ok-soft: oklch(0.95 0.04 162); /* 无新对应，保留字面值 */
-  --warn: var(--warning);
-  --warn-soft: oklch(0.96 0.06 80); /* 无新对应，保留字面值 */
-  --danger: var(--destructive);
-  --danger-soft: oklch(0.95 0.05 25); /* 无新对应，保留字面值 */
-
-  /* 状态徽章 bg/fg（方案 §3.2 标记"删除"，但别名段保留字面值以保证存量零回归） */
-  --success-bg: oklch(0.95 0.04 162);
-  --success-fg: oklch(0.42 0.14 162);
-  --info-bg: oklch(0.95 0.03 252);
-  --info-fg: oklch(0.45 0.14 252);
-  --warning-bg: oklch(0.96 0.06 80);
-  --warning-fg: oklch(0.48 0.16 75);
-  --danger-bg: oklch(0.95 0.05 25);
-  --danger-fg: oklch(0.42 0.2 25);
-
-  /* 圆角（旧字面值保留，不改写为派生值，保证存量零回归——方案 §3.2 注） */
-  --radius-sm: 10px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  /* --radius 本身与新 token 同名，已在上文定义为 14px */
-
-  /* 阴影（项目扩展，保留现值；--shadow-sm/md/pop/lg/glow 已在上文新 token 段定义） */
-  --shadow-accent: 0 8px 24px -6px oklch(0.6 0.18 252 / 0.3), 0 4px 12px oklch(0.6 0.18 252 / 0.18);
-
-  /* 侧边栏（冻结，随 .codex 清退一并删除——方案 §3.2 末行） */
-  --sidebar-gradient: linear-gradient(180deg, #ffffff 0%, oklch(0.985 0.003 260) 100%);
-  --sidebar-hover-glow: 0 0 0 1px oklch(0.6 0.18 252 / 0.08), 0 2px 8px oklch(0.2 0.01 260 / 0.06);
-}
-
-/* 旧暗色块保留原样（:root.dark 选择器，比 .dark 类选择器特异性高）
- * 保证旧 token 在暗色下使用原字面值，与新 .dark 块共存零冲突。
- * 不改 themeInitScript 与切换逻辑（方案 §W1-3 执行要点）。 */
-:root.dark {
-  color-scheme: dark;
-  --bg: oklch(0.16 0.015 260);
-  --surface: oklch(0.2 0.018 260);
-  --surface-2: oklch(0.24 0.02 260);
-  --surface-3: oklch(0.28 0.022 260);
-  --fg: oklch(0.94 0.008 260);
-  --fg-muted: oklch(0.7 0.012 260);
-  --fg-subtle: oklch(0.52 0.015 260);
-  --border: oklch(0.32 0.018 260);
-  --border-strong: oklch(0.4 0.022 260);
-  --accent: oklch(0.72 0.18 252);
-  --accent-hover: oklch(0.78 0.2 252);
-  --accent-fg: oklch(0.14 0.015 260);
-  --accent-soft: oklch(0.3 0.06 252);
-  --accent-ring: oklch(0.72 0.18 252 / 0.35);
-  --accent-gradient: linear-gradient(135deg, oklch(0.72 0.18 252) 0%, oklch(0.68 0.22 280) 100%);
-  --accent-gradient-hover: linear-gradient(
-    135deg,
-    oklch(0.76 0.2 252) 0%,
-    oklch(0.72 0.24 280) 100%
-  );
-  --ok: oklch(0.72 0.16 162);
-  --ok-soft: oklch(0.28 0.06 162);
-  --warn: oklch(0.78 0.18 75);
-  --warn-soft: oklch(0.3 0.08 80);
-  --danger: oklch(0.7 0.22 25);
-  --danger-soft: oklch(0.28 0.08 25);
-  --success-bg: oklch(0.28 0.06 162);
-  --success-fg: oklch(0.8 0.16 162);
-  --info-bg: oklch(0.28 0.06 252);
-  --info-fg: oklch(0.8 0.16 252);
-  --warning-bg: oklch(0.3 0.08 80);
-  --warning-fg: oklch(0.8 0.18 75);
-  --danger-bg: oklch(0.28 0.08 25);
-  --danger-fg: oklch(0.78 0.22 25);
-  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.25), 0 2px 6px oklch(0 0 0 / 0.2);
-  --shadow-md: 0 4px 16px -4px oklch(0 0 0 / 0.4), 0 2px 8px oklch(0 0 0 / 0.25);
-  --shadow-pop: 0 8px 32px -8px oklch(0 0 0 / 0.55), 0 4px 12px oklch(0 0 0 / 0.35);
-  --shadow-lg: 0 16px 56px -16px oklch(0 0 0 / 0.65), 0 8px 24px oklch(0 0 0 / 0.45);
-  --shadow-glow: 0 0 0 1px oklch(0.72 0.18 252 / 0.15), 0 4px 16px -4px oklch(0.72 0.18 252 / 0.12);
-  --shadow-accent: 0 8px 24px -6px oklch(0.72 0.18 252 / 0.35), 0 4px 12px
-    oklch(0.72 0.18 252 / 0.22);
-  --sidebar-gradient: linear-gradient(180deg, oklch(0.2 0.018 260) 0%, oklch(0.18 0.016 260) 100%);
-  --sidebar-hover-glow: 0 0 0 1px oklch(0.72 0.18 252 / 0.12), 0 2px 8px oklch(0 0 0 / 0.2);
-}
-/* ─── end @deprecated 别名段 ────────────────────────────────────────── */
-
-/* W3-6: .codex 块已清退 */
 
 * {
   box-sizing: border-box;
@@ -542,23 +446,11 @@ body {
     opacity: 0.5;
   }
 }
-.animate-slide-down {
-  animation: slideDown 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-.animate-slide-in-left {
-  animation: slideInLeft 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
 .animate-gentle-pulse {
   animation: gentlePulse 2s ease-in-out infinite;
 }
 
 /* 侧边栏线程项卡片样式 */
-.sidebar-thread-item {
-  transition: all 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.sidebar-thread-item:hover {
-  box-shadow: var(--sidebar-hover-glow);
-}
 
 /* 思考中省略号 */
 @keyframes blink {
@@ -570,15 +462,6 @@ body {
   40% {
     opacity: 1;
   }
-}
-.dot {
-  animation: blink 1.4s infinite both;
-}
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
 }
 
 /* ========== Markdown 渲染样式（消息气泡 + 思考卡片）========== */
@@ -620,7 +503,7 @@ body {
   color: var(--muted-foreground);
   margin: 0.5em 0;
   padding: 0.4em 0.9em;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
   background: color-mix(in oklab, var(--ring) 8%, transparent);
 }
 .prose-markdown blockquote p {
@@ -808,131 +691,16 @@ body {
 
 /* ========== 工具类 - 现代UI增强 ========== */
 
-/* 渐变背景 */
-.bg-accent-gradient {
-  background: var(--accent-gradient);
-}
-.bg-accent-gradient-hover:hover {
-  background: var(--accent-gradient-hover);
-}
-
 /* 彩色阴影 */
-.shadow-accent {
-  box-shadow: var(--shadow-accent);
-}
 
-/* 增强的hover效果 */
-.hover-lift {
-  transition: all 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.hover-scale {
-  transition: all 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.hover-scale:hover {
-  transform: scale(1.02);
-}
-
-/* 玻璃态效果 */
-.glass {
-  background: oklch(1 0 0 / 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid oklch(1 0 0 / 0.2);
-}
 :root.dark .glass {
   background: oklch(0.2 0.018 260 / 0.7);
   border: 1px solid oklch(0.4 0.022 260 / 0.3);
 }
 
-/* 渐变文字 */
-.text-gradient {
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 /* 增强的焦点状态 */
-.focus-ring {
-  transition: all 0.2s ease;
-}
-.focus-ring:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-  border-color: var(--accent);
-}
-
-/* 卡片增强 */
-.card-enhanced {
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  transition: all 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.card-enhanced:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-/* 按钮增强 */
-.btn-primary-enhanced {
-  background: var(--accent-gradient);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  padding: 10px 20px;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
-  box-shadow: var(--shadow-sm);
-}
-.btn-primary-enhanced:hover {
-  background: var(--accent-gradient-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-accent);
-}
-.btn-primary-enhanced:active {
-  transform: translateY(0);
-}
 
 /* 输入框增强 */
-.input-enhanced {
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  transition: all 0.2s ease;
-}
-.input-enhanced:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring);
-  outline: none;
-}
-
-/* 消息气泡增强 */
-.message-user-enhanced {
-  background: var(--accent-gradient);
-  color: white;
-  border-radius: var(--radius-lg);
-  padding: 12px 16px;
-  box-shadow: var(--shadow-sm);
-}
-
-.message-assistant-enhanced {
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 12px 16px;
-  transition: all 0.2s ease;
-}
-.message-assistant-enhanced:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-}
 
 /* ========== 全局滚动条（W2-3 合并） ========== */
 * {
@@ -955,9 +723,6 @@ body {
 }
 
 /* ========== 微细节：淡化分隔线 ========== */
-.hairline {
-  border-color: var(--border) !important;
-}
 
 /* 执行记录与正文共用阅读轴；状态原位更新，详情按需展开。 */
 .ha-feed,

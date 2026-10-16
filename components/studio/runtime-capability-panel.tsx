@@ -12,8 +12,8 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
         ok
-          ? "bg-[var(--success-bg)] text-[var(--success-fg)]"
-          : "bg-[var(--warning-bg)] text-[var(--warning-fg)]"
+          ? "bg-[var(--success-surface)] text-[var(--success-on-surface)]"
+          : "bg-[var(--warning-surface)] text-[var(--warning-on-surface)]"
       }`}
     >
       {label}
@@ -30,7 +30,7 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
 
   return (
     <div className="flex flex-col gap-3 text-[13px]">
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+      <section className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] p-3">
         <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">Runtime 能力</h3>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>类型</dt>
@@ -71,7 +71,7 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
         </dl>
       </section>
 
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+      <section className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] p-3">
         <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">网络策略</h3>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>策略</dt>
@@ -93,7 +93,7 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
         )}
       </section>
 
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+      <section className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] p-3">
         <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">资源配额</h3>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>CPU</dt>

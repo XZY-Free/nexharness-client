@@ -184,7 +184,7 @@ export function PendingInputQueue({ threadId, onSteer, parentBusy }: PendingInpu
                     onChange={(e) => setEditingText(e.target.value)}
                     rows={2}
                     aria-label="编辑队列消息"
-                    className="w-full resize-none rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary/60"
+                    className="w-full resize-none rounded-[var(--radius-control)] border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary/60"
                     // biome-ignore lint/a11y/noAutofocus: 编辑模式开启时即时聚焦是预期交互
                     autoFocus
                   />

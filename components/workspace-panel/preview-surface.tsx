@@ -242,7 +242,7 @@ function PreviewToolbar({
         value={previewUrl ?? ""}
         readOnly
         placeholder="未启动"
-        className="mx-1 min-w-0 flex-1 rounded-[var(--radius-sm)] bg-[var(--muted)] px-2 py-1 font-mono text-[11px] text-[var(--muted-foreground)] outline-none"
+        className="mx-1 min-w-0 flex-1 rounded-[var(--radius-control)] bg-[var(--muted)] px-2 py-1 font-mono text-[11px] text-[var(--muted-foreground)] outline-none"
       />
 
       {/* 设备尺寸 */}
@@ -298,7 +298,7 @@ function ToolbarButton({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {icon}
     </button>
@@ -319,7 +319,7 @@ function DeviceSizeButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`rounded-[var(--radius-sm)] px-2 py-1 text-[10px] font-medium transition ${
+      className={`rounded-[var(--radius-control)] px-2 py-1 text-[10px] font-medium transition ${
         active
           ? "bg-[var(--muted)] text-[var(--foreground)]"
           : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"

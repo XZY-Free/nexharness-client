@@ -180,8 +180,8 @@ function EditableArea({
         });
         if (res.status === 409) {
           const body = await res.json();
-          const remoteRevision: string = body?.error?.currentRevision ?? "";
-          const remoteContent: string = body?.error?.currentContent ?? "";
+          const remoteRevision: string = body?.error?.details?.current_revision ?? "";
+          const remoteContent: string = body?.error?.details?.current_content ?? "";
           setSave({
             status: "conflict",
             remoteRevision,

@@ -615,7 +615,7 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
                 去授权
               </a>
             ) : (
-              <span className="flex-1 rounded-[var(--radius-sm)] bg-card px-3 py-1.5 text-center text-xs text-muted-foreground">
+              <span className="flex-1 rounded-[var(--radius-control)] bg-card px-3 py-1.5 text-center text-xs text-muted-foreground">
                 等待授权回调
               </span>
             )}
@@ -1107,7 +1107,7 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
         {preview && content.request_type === "confirmation" ? (
           <section
             aria-label="操作预览"
-            className="mx-[17px] mb-3 rounded-[var(--radius-sm)] border border-border bg-background/60 px-3 py-2 text-2xs"
+            className="mx-[17px] mb-3 rounded-[var(--radius-control)] border border-border bg-background/60 px-3 py-2 text-2xs"
           >
             <h3 className="mb-1 font-medium text-foreground">操作预览</h3>
             <dl className="space-y-1">
@@ -1156,14 +1156,14 @@ export function UserActionItem({ threadId, item }: UserActionItemProps) {
 
         {/* 解析成功提示 */}
         {resolvedResolution && (
-          <div className="mx-[17px] mb-3 rounded-[var(--radius-sm)] bg-success/10 px-2 py-1 text-2xs text-success">
+          <div className="mx-[17px] mb-3 rounded-[var(--radius-control)] bg-success/10 px-2 py-1 text-2xs text-success">
             {getResolutionLabel(resolvedResolution)}
           </div>
         )}
 
         {/* 超时提示 */}
         {isExpired && !resolvedResolution && (
-          <div className="mx-[17px] mb-3 rounded-[var(--radius-sm)] bg-destructive/10 px-2 py-1 text-2xs text-destructive">
+          <div className="mx-[17px] mb-3 rounded-[var(--radius-control)] bg-destructive/10 px-2 py-1 text-2xs text-destructive">
             请求已超时，未执行任何操作。
           </div>
         )}

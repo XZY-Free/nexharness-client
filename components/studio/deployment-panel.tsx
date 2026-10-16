@@ -26,11 +26,11 @@ type DeploymentRow = {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    deployed: "bg-[var(--success-bg)] text-[var(--success-fg)]",
-    deploying: "bg-[var(--info-bg)] text-[var(--info-fg)]",
-    pending: "bg-[var(--info-bg)] text-[var(--info-fg)]",
-    failed: "bg-[var(--danger-bg)] text-[var(--danger-fg)]",
-    rolled_back: "bg-[var(--warning-bg)] text-[var(--warning-fg)]",
+    deployed: "bg-[var(--success-surface)] text-[var(--success-on-surface)]",
+    deploying: "bg-[var(--info-surface)] text-[var(--info-on-surface)]",
+    pending: "bg-[var(--info-surface)] text-[var(--info-on-surface)]",
+    failed: "bg-[var(--destructive-surface)] text-[var(--destructive-on-surface)]",
+    rolled_back: "bg-[var(--warning-surface)] text-[var(--warning-on-surface)]",
   };
   return (
     <span
@@ -55,7 +55,7 @@ export function DeploymentPanel({ deployments }: { deployments: DeploymentRow[] 
       {deployments.map((d) => (
         <div
           key={d.id}
-          className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3"
+          className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] p-3"
         >
           <div className="mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -107,7 +107,9 @@ export function DeploymentPanel({ deployments }: { deployments: DeploymentRow[] 
             {d.errorMessage && (
               <>
                 <dt>错误</dt>
-                <dd className="text-[var(--danger-fg)]">{d.errorMessage.slice(0, 200)}</dd>
+                <dd className="text-[var(--destructive-on-surface)]">
+                  {d.errorMessage.slice(0, 200)}
+                </dd>
               </>
             )}
           </dl>

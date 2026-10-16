@@ -110,7 +110,7 @@ export function WorkbenchPanel({
               onClick={handleRefreshPreview}
               title="刷新预览"
               aria-label="刷新预览"
-              className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-control)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
             >
               <Icon.refresh size={13} />
             </button>
@@ -120,7 +120,7 @@ export function WorkbenchPanel({
             onClick={onClose}
             title="关闭"
             aria-label="关闭工作台"
-            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-control)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
           >
             <Icon.close size={14} />
           </button>
@@ -172,7 +172,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2 text-[13px] font-medium transition ${
+      className={`flex items-center gap-1.5 rounded-[var(--radius-control)] px-3 py-2 text-[13px] font-medium transition ${
         active
           ? "bg-[var(--muted)] text-[var(--foreground)]"
           : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"

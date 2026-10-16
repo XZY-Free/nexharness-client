@@ -261,7 +261,7 @@ export function DesktopBrowserSurface({
             className={`flex h-8 min-w-[120px] max-w-[220px] items-center gap-2 border border-b-0 px-2 text-[12px] ${
               activeTab?.id === tab.id
                 ? "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
-                : "border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-3)]"
+                : "border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-raised)]"
             }`}
           >
             <button
@@ -294,7 +294,7 @@ export function DesktopBrowserSurface({
         <button
           type="button"
           onClick={() => void createTab(false)}
-          className="mb-1 flex size-7 shrink-0 items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]"
+          className="mb-1 flex size-7 shrink-0 items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--surface-raised)] hover:text-[var(--foreground)]"
           title="新建标签页"
           aria-label="新建标签页"
         >

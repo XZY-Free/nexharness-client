@@ -14,7 +14,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const POLL_INTERVAL_MS = 3000;
 
 type RuntimeLogResponse = {
-  ok?: boolean;
   lines?: string[];
   hasLog?: boolean;
   truncated?: boolean;
@@ -32,7 +31,7 @@ export function RunLogPanel({ threadId }: { threadId: string }) {
     try {
       const res = await apiFetch(`/api/threads/${threadId}/runtime/logs`, { cache: "no-store" });
       const json = (await res.json()) as RuntimeLogResponse;
-      if (json.ok) {
+      if (res.ok) {
         setRuntimeLines(json.lines ?? []);
         setRuntimeHasLog(json.hasLog ?? false);
         setRuntimeTruncated(json.truncated ?? false);

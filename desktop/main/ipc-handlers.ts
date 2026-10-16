@@ -144,11 +144,8 @@ export function registerIpcHandlers(
     if (!res.ok || typeof json !== "object" || json === null) {
       return { ok: false, code: "http_error", message: `注册端点返回 HTTP ${res.status}` };
     }
-    const data = (json as { data?: unknown }).data;
-    if (typeof data !== "object" || data === null) {
-      return { ok: false, code: "invalid_response", message: "注册响应缺少 data" };
-    }
-    const { deviceId: respDeviceId, tenantId } = data as { deviceId?: unknown; tenantId?: unknown };
+    const data = json as { deviceId?: unknown; tenantId?: unknown };
+    const { deviceId: respDeviceId, tenantId } = data;
     if (typeof respDeviceId !== "string" || respDeviceId !== identity.deviceId) {
       return { ok: false, code: "device_mismatch", message: "注册响应的 deviceId 与本机身份不符" };
     }
