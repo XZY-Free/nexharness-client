@@ -28,6 +28,7 @@ import { type UploadConfig, uploadFileToWorkspace } from "../downloads/download-
 import type { QaController } from "../qa/qa-controller";
 import { boundsChanged, hiddenBounds, validateBounds } from "./bounds-validator";
 import type { Bounds, WindowConstraints } from "./bounds-validator";
+import { mapConsoleType, toCdpKeyCode } from "./cdp-input";
 import { DebuggerSessionScheduler } from "./debugger-session-scheduler";
 import type { DebuggerSessionTarget } from "./debugger-session-scheduler";
 import { WebContentsDebuggerTarget } from "./debugger-target";
@@ -1405,81 +1406,5 @@ export class BrowserController {
   private async cleanupCancelledDownload(savePath: string): Promise<boolean> {
     // 此 path 可能从未注册（cancel 在 register 之前发生），unregister 返回 undefined 也无妨
     return this.cleanupTempFileAfterUpload(savePath);
-  }
-}
-
-/**
- * CDP 按键代码映射结果。
- */
-interface CdpKeyCode {
-  key: string;
-  code: string;
-  keyCode: number;
-}
-
-/**
- * 将按键名转换为 CDP 按键代码。
- *
- * 支持常见特殊键（Enter、Tab、Escape 等）和单字符键。
- * 对于未识别的多字符键名，按原样传入（CDP 可能识别）。
- */
-function toCdpKeyCode(key: string): CdpKeyCode {
-  const specialKeys: Record<string, CdpKeyCode> = {
-    Enter: { key: "Enter", code: "Enter", keyCode: 13 },
-    Tab: { key: "Tab", code: "Tab", keyCode: 9 },
-    Escape: { key: "Escape", code: "Escape", keyCode: 27 },
-    Backspace: { key: "Backspace", code: "Backspace", keyCode: 8 },
-    Delete: { key: "Delete", code: "Delete", keyCode: 46 },
-    ArrowUp: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
-    ArrowDown: { key: "ArrowDown", code: "ArrowDown", keyCode: 40 },
-    ArrowLeft: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 },
-    ArrowRight: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
-    Home: { key: "Home", code: "Home", keyCode: 36 },
-    End: { key: "End", code: "End", keyCode: 35 },
-    PageUp: { key: "PageUp", code: "PageUp", keyCode: 33 },
-    PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
-    Space: { key: " ", code: "Space", keyCode: 32 },
-  };
-  const special = specialKeys[key];
-  if (special) {
-    return special;
-  }
-  // 空格键（" "）
-  if (key === " ") {
-    return { key: " ", code: "Space", keyCode: 32 };
-  }
-  // 单字符键
-  if (key.length === 1) {
-    const upper = key.toUpperCase();
-    return {
-      key,
-      code: `Key${upper}`,
-      keyCode: upper.charCodeAt(0),
-    };
-  }
-  // 未识别的多字符键名，按原样传入
-  return { key, code: key, keyCode: 0 };
-}
-
-/**
- * Phase 7-3：将 CDP Runtime.consoleAPICalled 的 type 映射为 ConsoleEntry level。
- *
- * CDP type 值：log / warning / error / info / debug / verbose
- * 映射后与 redaction 模块 ConsoleEntry.level 对齐。
- */
-function mapConsoleType(type: string | undefined): "error" | "warning" | "log" | "info" {
-  switch (type) {
-    case "error":
-      return "error";
-    case "warning":
-    case "warn":
-      return "warning";
-    case "info":
-      return "info";
-    case "debug":
-    case "verbose":
-      return "log";
-    default:
-      return "log";
   }
 }
