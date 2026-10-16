@@ -41,13 +41,7 @@ import {
 import { normalizeUrl, validateNavAction } from "./nav-actions";
 import type { BrowserNavAction } from "./nav-actions";
 import { PageInsightsStore } from "./page-insights-store";
-import {
-  checkUrlSafety,
-  decideCertificateError,
-  decidePermission,
-  decidePopup,
-  isServerUrl,
-} from "./permission-policy";
+import { checkUrlSafety } from "./permission-policy";
 import type { PermissionType } from "./permission-policy";
 import { SessionManager } from "./session-manager";
 import { decideCloseTab } from "./tab-lifecycle";
@@ -55,6 +49,7 @@ import type { TabRestore } from "./tab-restore";
 import { TabStore } from "./tab-store";
 import type { TabId, TabMetadata, ThreadId } from "./tab-store";
 import { ViewRegistry } from "./view-registry";
+import { type WebContentsLike, registerWebContentsHandlers } from "./web-contents-wiring";
 
 /** 默认可见 bounds（首次显示时使用） */
 const DEFAULT_VISIBLE_BOUNDS: Bounds = { x: 0, y: 80, width: 1400, height: 820 };
@@ -1137,105 +1132,17 @@ export class BrowserController {
 
   /** 内部：设置 WebContents 事件监听 */
   private setupWebContentsEvents(threadId: ThreadId, tabId: TabId, view: WebContentsView): void {
-    const wc = view.webContents;
-
-    // Phase 7-1：注册 webContents 反向索引（供 will-download 事件归属查找）
-    this.webContentsIndex.set(wc.id, { threadId, tabId });
-
-    // Phase 7-1：在 Session 上注册 will-download handler（去重，每个 session 仅注册一次）
-    this.setupDownloadHandler(wc.session);
-
-    // 导航开始
-    wc.on("did-start-loading", () => {
-      this.tabStore.updateTab(threadId, tabId, { loadState: "loading" });
-    });
-
-    // 导航完成
-    wc.on("did-stop-loading", () => {
-      this.tabStore.updateTab(threadId, tabId, {
-        loadState: "loaded",
-        url: wc.getURL(),
-        title: wc.getTitle(),
-        canGoBack: wc.navigationHistory.canGoBack(),
-        canGoForward: wc.navigationHistory.canGoForward(),
-      });
-    });
-
-    // 标题更新
-    wc.on("page-title-updated", (_event, title) => {
-      this.tabStore.updateTab(threadId, tabId, { title });
-    });
-
-    // favicon 更新
-    wc.on("page-favicon-updated", (_event, favicons) => {
-      const favicon = favicons[0] ?? null;
-      this.tabStore.updateTab(threadId, tabId, { favicon });
-    });
-
-    // 崩溃
-    wc.on("render-process-gone", (_event, details) => {
-      this.tabStore.updateTab(threadId, tabId, {
-        loadState: "crashed",
-        error: details.reason || "render process crashed",
-      });
-    });
-
-    // 权限请求（按 session 设置，handler 内使用传入的 webContents 而非闭包）
-    wc.session.setPermissionRequestHandler((webContents, permission, callback) => {
-      const decision = decidePermission(permission as PermissionType, webContents.getURL());
-      callback(decision === "granted");
-    });
-
-    // 弹窗（默认 deny；对受信任 Server origin 由 renderer 处理）
-    wc.setWindowOpenHandler((details) => {
-      const popupDecision = decidePopup(details.url);
-      if (popupDecision === "deny") {
-        // 对受信任 origin 的弹窗，不在外部浏览器打开，由 renderer 处理
-        if (isServerUrl(details.url, this.config.serverOrigins)) {
-          // 由 renderer 决定如何处理
-        }
-        return { action: "deny" };
-      }
-      return { action: "deny" };
-    });
-
-    // 证书错误（fail-closed，webContents 级事件）
-    wc.on("certificate-error", (_event, _url, error, certificate, callback) => {
-      const decision = decideCertificateError(certificate, error);
-      callback(decision === "trust");
-    });
-
-    // 导航拦截（will-navigate，防 a[target=_self] 等跳转）
-    wc.on("will-navigate", (event, url) => {
-      const safety = checkUrlSafety(url);
-      if (safety === "blocked") {
-        event.preventDefault();
-      }
-    });
-
-    // 导航拦截（will-frame-navigate，覆盖子 frame）
-    wc.on("will-frame-navigate", (details) => {
-      const safety = checkUrlSafety(details.url);
-      if (safety === "blocked") {
-        details.preventDefault();
-      }
-    });
-
-    // Phase 7-3：注册 CDP 事件处理器（始终注册，仅在 debugger attached 时触发）
-    // 将 Runtime.consoleAPICalled / Runtime.exceptionThrown / Network.* 事件路由到 PageInsightsStore
-    wc.debugger.on("message", (_event, method: string, params: unknown) => {
-      this.handleCdpEvent(threadId, tabId, method, params);
+    // 事件接线（导航/标题/权限/弹窗/证书/导航拦截/CDP）委托给 web-contents-wiring，
+    // 使这部分可单测（传 WebContents 替身）且不占用 controller 篇幅。
+    registerWebContentsHandlers(view.webContents as unknown as WebContentsLike, {
+      updateTab: (patch) => this.tabStore.updateTab(threadId, tabId, patch),
+      indexWebContents: (webContentsId) =>
+        this.webContentsIndex.set(webContentsId, { threadId, tabId }),
+      setupDownloadHandler: (session) => this.setupDownloadHandler(session as Session),
+      handleCdpEvent: (method, params) => this.handleCdpEvent(threadId, tabId, method, params),
     });
   }
 
-  /**
-   * Phase 7-1：在 Session 上注册 will-download handler（去重）。
-   *
-   * will-download 是 Session 级事件，同一 partition 下多个 tab 共享 session。
-   * 通过 registeredDownloadSessions 去重，确保每个 session 仅注册一次。
-   * 通过 webContentsIndex 从 DownloadItem 的 webContents 反查 (threadId, tabId)，
-   * 正确归属下载到发起它的 tab。
-   */
   private setupDownloadHandler(session: Session): void {
     if (this.registeredDownloadSessions.has(session)) return;
     this.registeredDownloadSessions.add(session);
