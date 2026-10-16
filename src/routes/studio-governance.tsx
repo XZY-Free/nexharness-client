@@ -4,25 +4,9 @@ import { GovernanceEditor } from "@/components/studio/governance-editor";
 import { StudioPage } from "@/components/studio/studio-page";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
+import type { GovernanceWire } from "@/lib/control-plane-client";
 
 /** /studio/api/governance GET 响应（wire 形状，与编辑器 props 对齐）。 */
-interface GovernanceWire {
-  set: { versionNo: number };
-  config: {
-    protectedPaths: string[];
-    commandDenyList: string[];
-    formatOnWrite: boolean;
-    verifyBeforeDelivery: boolean;
-    harnessLoopLimits?: {
-      maxLoopSteps?: number;
-      maxAgentCalls?: number;
-      maxToolCalls?: number;
-      maxKnowledgeSearches?: number;
-      maxConsecutiveSameAction?: number;
-    };
-  };
-  revision: { revisionNo: number; publishedAt: string | null };
-}
 
 /**
  * Studio Governance 配置页（页面数据 API 化）。

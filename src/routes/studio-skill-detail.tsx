@@ -12,42 +12,8 @@ import {
 } from "@/components/studio/studio-settings-section";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
+import type { SkillDetailWire, SkillVersionWire } from "@/lib/control-plane-client";
 import { useParams } from "react-router-dom";
-
-/** GET /studio/api/skills/[id] 响应（wire 形状）。 */
-interface SkillDetailWire {
-  skill: {
-    id: string;
-    skillKey: string;
-    displayName: string | null;
-    description: string | null;
-    sourceType: string;
-    lifecycleState: string;
-    visibilityScope: string;
-    currentVersionId: string | null;
-  };
-  currentVersion: unknown;
-  syncInfo: {
-    syncState: string;
-    remoteAssetId: string;
-    remoteName: string | null;
-    remoteDisplayName: string | null;
-    remoteVersion: string | null;
-    remoteContentHash: string | null;
-    lastSyncedAt: string | null;
-    lastError: string | null;
-  } | null;
-}
-
-/** GET /studio/api/skills/[id]/versions 行（wire 形状）。 */
-interface SkillVersionWire {
-  readonly id: string;
-  readonly versionNo: number;
-  readonly revisionState: string;
-  readonly createdAt: string;
-  readonly contentRef: string | null;
-  readonly manifestJson: unknown;
-}
 
 const LIFECYCLE_LABEL: Record<string, string> = {
   draft: "草稿",

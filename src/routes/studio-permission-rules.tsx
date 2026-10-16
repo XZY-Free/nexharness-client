@@ -4,23 +4,9 @@ import { PermissionRulesEditor } from "@/components/studio/permission-rules-edit
 import { StudioPage } from "@/components/studio/studio-page";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
+import type { PermissionRulesWire } from "@/lib/control-plane-client";
 
 /** /studio/api/permission-rules GET 响应（wire 形状）。 */
-interface PermissionRulesWire {
-  set: { versionNo: number };
-  defaultDecision: "allow" | "pause" | "block";
-  rules: Array<{
-    id: string;
-    ruleKey: string;
-    toolPattern: string;
-    argMatcher: unknown;
-    decision: "allow" | "pause" | "block";
-    scope: unknown;
-    priority: number;
-    reason: string | null;
-  }>;
-  revision: { revisionNo: number; publishedAt: string | null };
-}
 
 /**
  * Studio Permission Rules 页（页面数据 API 化）。

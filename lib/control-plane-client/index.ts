@@ -113,6 +113,7 @@ export {
 
 export type { ApiClientConfig } from "./http-client";
 export { ControlPlaneRequestError } from "./http-client";
+export { createControlPlaneRequest } from "./http-client";
 export type { ControlPlaneClient } from "./client";
 export { createControlPlaneClient } from "./client";
 export type { AgentApiClient } from "./api/agents";
@@ -126,6 +127,19 @@ export { createRuntimeApiClient } from "./api/runtimes";
 
 export type { ArtifactApiClient } from "./api/artifacts";
 export { createArtifactApiClient } from "./api/artifacts";
+
+export type { StudioApiClient } from "./api/studio";
+export { createStudioApiClient } from "./api/studio";
+
+export type {
+  AgentCountWire,
+  GovernanceWire,
+  PermissionRulesWire,
+  SkillDetailWire,
+  SkillListWireRow,
+  SkillVersionWire,
+  StudioAuditWire,
+} from "./contracts/studio";
 
 export type { PublicationApiClient } from "./api/publications";
 export { createPublicationApiClient } from "./api/publications";

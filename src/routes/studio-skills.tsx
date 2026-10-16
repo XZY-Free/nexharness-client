@@ -6,18 +6,10 @@ import { StudioPage } from "@/components/studio/studio-page";
 import { useStudioContext } from "@/components/studio/studio-shell";
 import { Badge } from "@/components/ui/badge";
 import { snapshotAllowsTenantAction } from "@/lib/client/studio-permissions";
+import type { SkillListWireRow } from "@/lib/control-plane-client";
 import { Link } from "react-router-dom";
 
 /** /studio/api/skills?withSync=1 列表行（wire 形状，仅取展示所需字段）。 */
-interface SkillListWireRow {
-  readonly id: string;
-  readonly skillKey: string;
-  readonly displayName: string | null;
-  readonly sourceType: string;
-  readonly lifecycleState: string;
-  readonly syncState?: string | null;
-  readonly lastSyncedAt?: string | null;
-}
 
 const SOURCE_LABEL: Record<string, string> = {
   local: "本地创建",

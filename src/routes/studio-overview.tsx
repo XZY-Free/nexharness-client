@@ -4,12 +4,10 @@ import {
   StudioSettingsRow,
   StudioSettingsSection,
 } from "@/components/studio/studio-settings-section";
+import type { SkillListWireRow } from "@/lib/control-plane-client";
 import { t } from "@/lib/i18n";
 
 /** 技能列表 wire 行（仅取计数所需字段）。 */
-interface SkillListWireRow {
-  readonly lifecycleState: string;
-}
 
 /**
  * Agent Studio 总览。

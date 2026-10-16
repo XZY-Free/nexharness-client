@@ -7,17 +7,23 @@
  * - 失败保留 HTTP 状态与错误消息（供页面区分 401/403/404/500）。
  * - reload() 触发一次重取；组件卸载后丢弃在途结果。
  *
- * 与 control-plane-client 的关系（P2-6 收敛）：
- * 两者是**同一套取数语义**——都走 apiFetch（cookie 会话 + basePath），
- * 且错误统一归一为 `AppError`（lib/errors/app-error）。区别在定位：
- * - control-plane-client：领域对象 + 强类型 DTO + 抛错
- * - 本 hook：页面取数 + 状态机（data/loading/httpStatus/errorMessage）
- * 故不合并为一个（强行合并会让 8 个页面大改且引入行为差异），
- * 但**传输层与错误模型已统一**，跨层传错误不再需要手工适配。
+ * 与 control-plane-client 的关系（P2-6 统一数据层）：
+ * 本 hook 的**传输层已委托**给 control-plane 的 `createControlPlaneRequest`
+ * —— 即 Studio 页面与领域面板走同一套请求实现、同一错误解析、同一错误模型
+ * （`ControlPlaneRequestError extends AppError`）。
+ * 本 hook 只额外承担"页面状态机"（data / loading / httpStatus / errorMessage）。
+ *
+ * 为什么不合并成一个 API：control-plane client 面向"领域对象 + 抛错"，
+ * 本 hook 面向"页面取数 + 状态机"——两者是**分层**而非重复。
+ * 统一在传输层，而非强行让 8 个页面改成直接调 client。
  */
-import { apiFetch } from "@/lib/api-fetch";
+import {
+  type ApiClientConfig,
+  ControlPlaneRequestError,
+  createControlPlaneRequest,
+} from "@/lib/control-plane-client";
 import { type AppError, toAppError } from "@/lib/errors/app-error";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export interface ApiDataState<T> {
   readonly data: T | null;
@@ -30,6 +36,12 @@ export interface ApiDataState<T> {
   readonly reload: () => void;
 }
 
+/** 请求配置：同源（baseUrl 为空）+ 无自定义 header（cookie 会话直通）。 */
+const REQUEST_CONFIG: ApiClientConfig = {
+  baseUrl: "",
+  headers: () => ({}),
+};
+
 export function useApiData<T>(path: string): ApiDataState<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +49,10 @@ export function useApiData<T>(path: string): ApiDataState<T> {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [error, setError] = useState<AppError | null>(null);
   const [version, setVersion] = useState(0);
+
+  // 传输层：与 Studio 领域面板共用 control-plane 的 request 实现
+  // （同一错误解析 + 同一错误模型；网络失败会抛 ControlPlaneRequestError）
+  const request = useMemo(() => createControlPlaneRequest(REQUEST_CONFIG), []);
 
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -49,32 +65,17 @@ export function useApiData<T>(path: string): ApiDataState<T> {
     setError(null);
     void (async () => {
       try {
-        const response = await apiFetch(path, { cache: "no-store" });
-        const body = (await response.json().catch(() => null)) as unknown;
+        const body = await request<T>(path, { cache: "no-store" });
         if (!active) return;
-        if (!response.ok) {
-          const envelope = extractErrorEnvelope(body);
-          const appError = toAppError(
-            envelope ?? {
-              code: `HTTP_${response.status}`,
-              message: `请求失败（HTTP ${response.status}）`,
-              requestId: response.headers.get("x-request-id"),
-              retryable: response.status >= 500,
-            },
-          );
-          setHttpStatus(response.status);
-          setErrorMessage(appError.message);
-          setError(appError);
-          setData(null);
-          return;
-        }
-        setData(body as T);
+        setData(body);
       } catch (cause) {
         if (!active) return;
-        // 传输层失败统一归一为 AppError（code=NETWORK_ERROR，retryable=true）
+        // request 对非 2xx 抛 ControlPlaneRequestError（继承 AppError）；
+        // 传输层失败（fetch reject）也会被包装 —— 二者在此统一归一。
         const appError = toAppError(cause);
-        setHttpStatus(0);
-        setErrorMessage("网络请求失败，请检查连接后重试");
+        const status = cause instanceof ControlPlaneRequestError ? cause.status : 0;
+        setHttpStatus(status === 0 ? 0 : status);
+        setErrorMessage(status === 0 ? "网络请求失败，请检查连接后重试" : appError.message);
         setError(appError);
         setData(null);
       } finally {
@@ -84,26 +85,7 @@ export function useApiData<T>(path: string): ApiDataState<T> {
     return () => {
       active = false;
     };
-  }, [path, version]);
+  }, [path, version, request]);
 
   return { data, loading, httpStatus, errorMessage, error, reload };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-/** 从服务端错误 Envelope 提取可归一的形状（{error:{code,message,...}}）。 */
-function extractErrorEnvelope(
-  body: unknown,
-): { code: string; message: string; requestId: string | null; retryable: boolean } | null {
-  if (!isRecord(body) || !isRecord(body.error)) return null;
-  const { code, message, request_id, retryable } = body.error;
-  if (typeof code !== "string" || typeof message !== "string") return null;
-  return {
-    code,
-    message,
-    requestId: typeof request_id === "string" ? request_id : null,
-    retryable: retryable === true,
-  };
 }

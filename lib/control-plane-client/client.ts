@@ -6,6 +6,7 @@ import { createProvisioningApiClient } from "./api/provisioning";
 import { createPublicationApiClient } from "./api/publications";
 import { createRouteApiClient } from "./api/routes";
 import { createRuntimeApiClient } from "./api/runtimes";
+import { createStudioApiClient } from "./api/studio";
 import type { ApiClientConfig } from "./http-client";
 
 /** Web Admin 与 Desktop Admin 共用的控制面客户端。 */
@@ -19,6 +20,7 @@ export function createControlPlaneClient(config: ApiClientConfig) {
     publications: createPublicationApiClient(config),
     routes: createRouteApiClient(config),
     runtimes: createRuntimeApiClient(config),
+    studio: createStudioApiClient(config),
   };
 }
 
