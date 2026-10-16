@@ -41,14 +41,21 @@ describe("SessionManager — 用户分区隔离", () => {
 });
 
 describe("SessionManager — 临时会话（incognito）", () => {
-  it("同一 threadId 多次创建返回相同 partition（复用）", () => {
+  it("同一 threadId + 同一 nonce 返回相同 partition（派生确定性）", () => {
     const m = new SessionManager();
-    expect(m.createIncognitoPartition("t1")).toBe(m.createIncognitoPartition("t1"));
+    // 显式传 nonce：匿名 nonce 默认取 Date.now()，跨毫秒会不同（这是设计意图——
+    // 匿名分区本就应各不相同）。要断言"同 thread 复用"，必须固定 nonce。
+    expect(m.createIncognitoPartition("t1", "n1")).toBe(m.createIncognitoPartition("t1", "n1"));
+  });
+
+  it("同一 threadId 不同 nonce 得到不同 partition（隔离）", () => {
+    const m = new SessionManager();
+    expect(m.createIncognitoPartition("t1", "n1")).not.toBe(m.createIncognitoPartition("t1", "n2"));
   });
 
   it("不同 threadId 得到不同 partition", () => {
     const m = new SessionManager();
-    expect(m.createIncognitoPartition("t1")).not.toBe(m.createIncognitoPartition("t2"));
+    expect(m.createIncognitoPartition("t1", "n1")).not.toBe(m.createIncognitoPartition("t2", "n1"));
   });
 
   it("getIncognitoCount 反映该 thread 的临时分区数", () => {

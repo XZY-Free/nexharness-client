@@ -18,8 +18,8 @@
  *     Authorization: Bearer ${authToken}    （仅在 authToken 提供时）
  *   Body: fs.createReadStream(filePath)
  *
- * 响应（jsonOk 信封，与 Server 其他 route 一致）：
- *   { ok: true, data: { workspacePath: "downloads/xxx", size: 1234 } }
+ * 响应（apiSuccess 裸对象，与 Server 其他 route 一致）：
+ *   { path: "downloads/xxx", name: "xxx", size: 1234, stat: {...} }
  */
 
 import { createReadStream, statSync } from "node:fs";
@@ -120,33 +120,25 @@ export async function uploadFileToWorkspace(params: UploadParams): Promise<Uploa
     };
   }
 
-  let body: unknown;
+  let body: { path?: unknown };
   try {
-    body = await response.json();
+    body = (await response.json()) as { path?: unknown };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, workspacePath: null, error: `响应解析失败：${message}` };
   }
 
-  // 响应信封：{ ok: true, data: { workspacePath, size } }（与 Server jsonOk 一致）
-  const envelope = body as { ok?: unknown; data?: { workspacePath?: unknown } };
-  if (!envelope || envelope.ok !== true || !envelope.data) {
+  // 响应信封：apiSuccess 裸对象 { path, name, size, stat }（服务端已统一 apiSuccess）
+  if (!body || typeof body.path !== "string") {
     return {
       ok: false,
       workspacePath: null,
-      error: "响应缺少 data 字段",
-    };
-  }
-  if (typeof envelope.data.workspacePath !== "string") {
-    return {
-      ok: false,
-      workspacePath: null,
-      error: "响应缺少 workspacePath 字段",
+      error: "响应缺少 path 字段",
     };
   }
 
   return {
     ok: true,
-    workspacePath: envelope.data.workspacePath,
+    workspacePath: body.path,
   };
 }
