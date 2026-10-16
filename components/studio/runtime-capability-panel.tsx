@@ -23,20 +23,22 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 
 export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCapability }) {
   if (!capability) {
-    return <div className="text-[13px] text-[var(--fg-muted)]">runtime capability 不可用。</div>;
+    return (
+      <div className="text-[13px] text-[var(--muted-foreground)]">runtime capability 不可用。</div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-3 text-[13px]">
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] p-3">
-        <h3 className="mb-2 text-[14px] font-medium text-[var(--fg)]">Runtime 能力</h3>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--fg-muted)]">
+      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+        <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">Runtime 能力</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>类型</dt>
-          <dd className="font-mono text-[var(--fg)]">{capability.runtimeType}</dd>
+          <dd className="font-mono text-[var(--foreground)]">{capability.runtimeType}</dd>
           {capability.imageVersion && (
             <>
               <dt>镜像</dt>
-              <dd className="font-mono text-[var(--fg)]">{capability.imageVersion}</dd>
+              <dd className="font-mono text-[var(--foreground)]">{capability.imageVersion}</dd>
             </>
           )}
           <dt>可用</dt>
@@ -52,7 +54,7 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
               <dd className="flex flex-wrap items-center gap-2">
                 <StatusBadge ok={false} label={`由 ${capability.degradedFrom} 降级`} />
                 {capability.degradedReason && (
-                  <span className="font-mono text-[11px] text-[var(--fg-muted)]">
+                  <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                     {capability.degradedReason}
                   </span>
                 )}
@@ -69,11 +71,11 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
         </dl>
       </section>
 
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] p-3">
-        <h3 className="mb-2 text-[14px] font-medium text-[var(--fg)]">网络策略</h3>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--fg-muted)]">
+      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+        <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">网络策略</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>策略</dt>
-          <dd className="font-mono text-[var(--fg)]">{capability.networkPolicy}</dd>
+          <dd className="font-mono text-[var(--foreground)]">{capability.networkPolicy}</dd>
           <dt>强制执行</dt>
           <dd>
             {capability.networkPolicyEnforced ? (
@@ -84,18 +86,18 @@ export function RuntimeCapabilityPanel({ capability }: { capability?: RuntimeCap
           </dd>
         </dl>
         {!capability.networkPolicyEnforced && (
-          <p className="mt-2 text-[11px] text-[var(--fg-muted)]">
+          <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
             host 模式是信任平台进程，无法硬隔离 egress；网络策略标记为 open +
             未强制，不伪装有硬隔离。
           </p>
         )}
       </section>
 
-      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] p-3">
-        <h3 className="mb-2 text-[14px] font-medium text-[var(--fg)]">资源配额</h3>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--fg-muted)]">
+      <section className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3">
+        <h3 className="mb-2 text-[14px] font-medium text-[var(--foreground)]">资源配额</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[var(--muted-foreground)]">
           <dt>CPU</dt>
-          <dd className="font-mono text-[var(--fg)]">{capability.quotas.cpu ?? "—"}</dd>
+          <dd className="font-mono text-[var(--foreground)]">{capability.quotas.cpu ?? "—"}</dd>
           <dt>内存</dt>
           <dd className="font-mono">{capability.quotas.memory ?? "—"}</dd>
           <dt>超时</dt>

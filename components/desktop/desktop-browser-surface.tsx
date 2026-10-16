@@ -241,10 +241,10 @@ export function DesktopBrowserSurface({
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col bg-[var(--surface)]"
+      className="flex min-h-0 flex-1 flex-col bg-[var(--card)]"
       data-testid="desktop-browser-surface"
     >
-      <div className="flex h-9 shrink-0 items-end gap-1 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface-2)] px-2 pt-1">
+      <div className="flex h-9 shrink-0 items-end gap-1 overflow-x-auto border-b border-[var(--border)] bg-[var(--muted)] px-2 pt-1">
         {tabs.map((tab) => (
           <div
             key={tab.id}
@@ -260,8 +260,8 @@ export function DesktopBrowserSurface({
             }}
             className={`flex h-8 min-w-[120px] max-w-[220px] items-center gap-2 border border-b-0 px-2 text-[12px] ${
               activeTab?.id === tab.id
-                ? "border-[var(--border)] bg-[var(--surface)] text-[var(--fg)]"
-                : "border-transparent text-[var(--fg-muted)] hover:bg-[var(--surface-3)]"
+                ? "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                : "border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-3)]"
             }`}
           >
             <button
@@ -284,7 +284,7 @@ export function DesktopBrowserSurface({
             <button
               type="button"
               onClick={() => void closeTab(tab.id)}
-              className="flex size-5 shrink-0 items-center justify-center text-[var(--fg-subtle)] hover:text-[var(--fg)]"
+              className="flex size-5 shrink-0 items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
               aria-label={`关闭 ${tab.title || "标签页"}`}
             >
               <Icon.close size={11} />
@@ -294,7 +294,7 @@ export function DesktopBrowserSurface({
         <button
           type="button"
           onClick={() => void createTab(false)}
-          className="mb-1 flex size-7 shrink-0 items-center justify-center text-[var(--fg-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--fg)]"
+          className="mb-1 flex size-7 shrink-0 items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--surface-3)] hover:text-[var(--foreground)]"
           title="新建标签页"
           aria-label="新建标签页"
         >
@@ -302,7 +302,7 @@ export function DesktopBrowserSurface({
         </button>
       </div>
 
-      <div className="flex h-10 shrink-0 items-center gap-1.5 border-b border-[var(--border)] bg-[var(--surface)] px-2">
+      <div className="flex h-10 shrink-0 items-center gap-1.5 border-b border-[var(--border)] bg-[var(--card)] px-2">
         <ToolbarButton
           label="后退"
           disabled={!activeTab?.canGoBack}
@@ -345,14 +345,14 @@ export function DesktopBrowserSurface({
                 submitAddress();
               }
             }}
-            className="h-7 w-full border border-[var(--border)] bg-[var(--surface-2)] px-3 text-[12px] outline-none focus:border-[var(--border-strong)]"
+            className="h-7 w-full border border-[var(--border)] bg-[var(--muted)] px-3 text-[12px] outline-none focus:border-[var(--border-strong)]"
             spellCheck={false}
           />
         </form>
       </div>
 
       {aiLocked ? (
-        <div className="flex h-9 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--surface-2)] px-3 text-[12px] text-[var(--fg)]">
+        <div className="flex h-9 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--muted)] px-3 text-[12px] text-[var(--foreground)]">
           <span>{cancellingAi ? "正在停止 AI..." : "AI 正在操作，页面输入已锁定"}</span>
           <button
             type="button"
@@ -365,7 +365,7 @@ export function DesktopBrowserSurface({
         </div>
       ) : null}
       {error ? (
-        <output className="shrink-0 border-b border-[var(--danger)] px-3 py-2 text-[12px] text-[var(--danger)]">
+        <output className="shrink-0 border-b border-[var(--destructive)] px-3 py-2 text-[12px] text-[var(--destructive)]">
           {error}
         </output>
       ) : null}
@@ -396,7 +396,7 @@ function ToolbarButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-7 items-center justify-center text-[var(--fg-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)] disabled:opacity-30"
+      className="flex size-7 items-center justify-center text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:opacity-30"
     >
       {children}
     </button>
@@ -405,7 +405,7 @@ function ToolbarButton({
 
 function BrowserError({ message }: { message: string }) {
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--surface)] px-6 text-center text-[13px] text-[var(--danger)]">
+    <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--card)] px-6 text-center text-[13px] text-[var(--destructive)]">
       {message}
     </div>
   );

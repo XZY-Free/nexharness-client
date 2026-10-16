@@ -124,7 +124,7 @@ export function CodeBlock({
     <div className={plain ? "ha-code-block group relative" : "group relative my-3"}>
       {/* 语言标签 */}
       {lang ? (
-        <span className="absolute right-12 top-2 z-10 text-[11px] text-[var(--fg-subtle)]">
+        <span className="absolute right-12 top-2 z-10 text-[11px] text-[var(--foreground-subtle)]">
           {lang}
         </span>
       ) : null}
@@ -132,7 +132,7 @@ export function CodeBlock({
       <button
         type="button"
         onClick={copy}
-        className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded text-[var(--fg-subtle)] opacity-0 transition hover:bg-[var(--surface-2)] hover:text-[var(--fg)] group-hover:opacity-100 focus-visible:opacity-100"
+        className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded text-[var(--foreground-subtle)] opacity-0 transition hover:bg-[var(--muted)] hover:text-[var(--foreground)] group-hover:opacity-100 focus-visible:opacity-100"
         title="复制代码"
         aria-label={copied ? "已复制" : "复制代码"}
       >
@@ -146,14 +146,16 @@ export function CodeBlock({
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-[var(--surface-2)] p-3 text-[13px] leading-6">
+        <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-[var(--muted)] p-3 text-[13px] leading-6">
           <code className={`${className ?? ""} bg-transparent p-0 text-inherit text-[13px]`}>
             {children}
           </code>
         </pre>
       )}
       {copied ? (
-        <span className="absolute right-2 top-9 z-10 text-[11px] text-[var(--ok)]">已复制</span>
+        <span className="absolute right-2 top-9 z-10 text-[11px] text-[var(--success)]">
+          已复制
+        </span>
       ) : null}
     </div>
   );
@@ -178,7 +180,7 @@ function InlineCodeRenderer({
 }) {
   return (
     <code
-      className={`${className ?? ""} rounded bg-[var(--surface-2)] px-1 py-0.5 text-[13px]`}
+      className={`${className ?? ""} rounded bg-[var(--muted)] px-1 py-0.5 text-[13px]`}
       {...rest}
     >
       {children}

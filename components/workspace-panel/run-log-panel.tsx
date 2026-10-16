@@ -68,9 +68,9 @@ export function RunLogPanel({ threadId }: { threadId: string }) {
   }, [loadLogs]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[var(--surface-2)]">
-      <section className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2">
-        <div className="flex items-center gap-2 text-[12px] font-medium text-[var(--fg-subtle)]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[var(--muted)]">
+      <section className="shrink-0 border-b border-[var(--border)] bg-[var(--card)] px-4 py-2">
+        <div className="flex items-center gap-2 text-[12px] font-medium text-[var(--foreground-subtle)]">
           <Icon.terminal size={13} />
           AppRuntime{" "}
           {runtimeHasLog ? `(${runtimeLines.length} 行${runtimeTruncated ? " · 已截断" : ""})` : ""}
@@ -79,12 +79,14 @@ export function RunLogPanel({ threadId }: { threadId: string }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {error && (
-          <div className="px-2 py-4 text-center text-[12px] text-[var(--danger)]">{error}</div>
+          <div className="px-2 py-4 text-center text-[12px] text-[var(--destructive)]">{error}</div>
         )}
         {loading ? (
-          <div className="px-2 py-4 text-center text-[12px] text-[var(--fg-subtle)]">加载中…</div>
+          <div className="px-2 py-4 text-center text-[12px] text-[var(--foreground-subtle)]">
+            加载中…
+          </div>
         ) : !runtimeHasLog ? (
-          <div className="px-2 py-3 text-center text-[11px] text-[var(--fg-subtle)]">
+          <div className="px-2 py-3 text-center text-[11px] text-[var(--foreground-subtle)]">
             dev server 未启动或无日志
           </div>
         ) : (
@@ -106,7 +108,7 @@ function RuntimeLogView({ lines }: { lines: string[] }) {
   return (
     <div
       ref={scrollRef}
-      className="max-h-[200px] overflow-y-auto rounded bg-[var(--surface)] p-2 font-mono text-[11px] leading-5 text-[var(--fg-muted)]"
+      className="max-h-[200px] overflow-y-auto rounded bg-[var(--card)] p-2 font-mono text-[11px] leading-5 text-[var(--muted-foreground)]"
     >
       {lines.map((line, i) => (
         <div key={`log-${i}-${line.slice(0, 20)}`} className="whitespace-pre-wrap break-all">

@@ -110,7 +110,7 @@ export function PreviewSurface({
   // idle：无 previewUrl
   if (!resolvedPreviewUrl) {
     return (
-      <div className="flex h-full flex-col bg-[var(--surface-2)]">
+      <div className="flex h-full flex-col bg-[var(--muted)]">
         <PreviewToolbar
           previewUrl={null}
           deviceSize={deviceSize}
@@ -122,7 +122,7 @@ export function PreviewSurface({
           onOpenNewWindow={handleOpenNewWindow}
           disabled
         />
-        <div className="flex flex-1 items-center justify-center text-[13px] text-[var(--fg-muted)]">
+        <div className="flex flex-1 items-center justify-center text-[13px] text-[var(--muted-foreground)]">
           项目尚未启动
         </div>
       </div>
@@ -132,7 +132,7 @@ export function PreviewSurface({
   const widthClass = DEVICE_WIDTHS[deviceSize];
 
   return (
-    <div className="flex h-full flex-col bg-[var(--surface-2)]">
+    <div className="flex h-full flex-col bg-[var(--muted)]">
       <PreviewToolbar
         previewUrl={resolvedPreviewUrl}
         deviceSize={deviceSize}
@@ -147,19 +147,19 @@ export function PreviewSurface({
 
       {/* 状态指示条 */}
       {state === "restarting" && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[11px] text-[var(--primary)]">
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[11px] text-[var(--primary)]">
           <Icon.spinner size={12} className="animate-spin" />
           重启中
         </div>
       )}
       {state === "error" && errorMsg && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[11px] text-[var(--danger)]">
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[11px] text-[var(--destructive)]">
           <Icon.alert size={12} />
           {errorMsg}
           <button
             type="button"
             onClick={() => setState("ready")}
-            className="ml-auto text-[var(--fg-muted)] hover:text-[var(--fg)]"
+            className="ml-auto text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             aria-label="关闭错误"
           >
             <Icon.close size={12} />
@@ -168,7 +168,7 @@ export function PreviewSurface({
       )}
 
       {/* iframe 容器：设备尺寸通过 max-width 约束 */}
-      <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-[var(--surface-2)]">
+      <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-[var(--muted)]">
         <div
           data-testid="preview-iframe-container"
           className={`h-full w-full ${widthClass ?? ""} bg-white`}
@@ -209,7 +209,7 @@ function PreviewToolbar({
   disabled: boolean;
 }) {
   return (
-    <header className="flex shrink-0 items-center gap-1 border-b border-[var(--border)] bg-[var(--surface)] px-2 py-1.5">
+    <header className="flex shrink-0 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)] px-2 py-1.5">
       {/* 导航按钮 */}
       <ToolbarButton
         onClick={onBack}
@@ -242,7 +242,7 @@ function PreviewToolbar({
         value={previewUrl ?? ""}
         readOnly
         placeholder="未启动"
-        className="mx-1 min-w-0 flex-1 rounded-[var(--radius-sm)] bg-[var(--surface-2)] px-2 py-1 font-mono text-[11px] text-[var(--fg-muted)] outline-none"
+        className="mx-1 min-w-0 flex-1 rounded-[var(--radius-sm)] bg-[var(--muted)] px-2 py-1 font-mono text-[11px] text-[var(--muted-foreground)] outline-none"
       />
 
       {/* 设备尺寸 */}
@@ -298,7 +298,7 @@ function ToolbarButton({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {icon}
     </button>
@@ -321,8 +321,8 @@ function DeviceSizeButton({
       aria-label={label}
       className={`rounded-[var(--radius-sm)] px-2 py-1 text-[10px] font-medium transition ${
         active
-          ? "bg-[var(--surface-2)] text-[var(--fg)]"
-          : "text-[var(--fg-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
+          ? "bg-[var(--muted)] text-[var(--foreground)]"
+          : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
       }`}
     >
       {label}

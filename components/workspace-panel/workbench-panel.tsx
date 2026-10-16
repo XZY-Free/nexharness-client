@@ -71,9 +71,9 @@ export function WorkbenchPanel({
   const handleRefreshPreview = useCallback(() => setPreviewReloadKey((k) => k + 1), []);
 
   return (
-    <div className="flex h-full flex-col bg-[var(--surface-2)]">
+    <div className="flex h-full flex-col bg-[var(--muted)]">
       {/* 页签栏 */}
-      <header className="flex shrink-0 items-center justify-between gap-2 border-[var(--border)] border-b bg-[var(--surface)] px-2">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-[var(--border)] border-b bg-[var(--card)] px-2">
         <div className="flex items-center gap-0.5">
           <TabButton
             active={activeTab === "workspace"}
@@ -110,7 +110,7 @@ export function WorkbenchPanel({
               onClick={handleRefreshPreview}
               title="刷新预览"
               aria-label="刷新预览"
-              className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
+              className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
             >
               <Icon.refresh size={13} />
             </button>
@@ -120,7 +120,7 @@ export function WorkbenchPanel({
             onClick={onClose}
             title="关闭"
             aria-label="关闭工作台"
-            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--fg-muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted-foreground)] transition hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
           >
             <Icon.close size={14} />
           </button>
@@ -174,8 +174,8 @@ function TabButton({
       onClick={onClick}
       className={`flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2 text-[13px] font-medium transition ${
         active
-          ? "bg-[var(--surface-2)] text-[var(--fg)]"
-          : "text-[var(--fg-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
+          ? "bg-[var(--muted)] text-[var(--foreground)]"
+          : "text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
       }`}
       aria-current={active ? "page" : undefined}
     >
@@ -199,7 +199,7 @@ function WorkspaceBody({
   // 文件树 + 编辑器：移动端上下排列，桌面端左右排列
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside className="flex max-h-[38vh] w-full shrink-0 flex-col border-[var(--border)] border-b bg-[var(--surface)] md:max-h-none md:w-[200px] md:border-r md:border-b-0">
+      <aside className="flex max-h-[38vh] w-full shrink-0 flex-col border-[var(--border)] border-b bg-[var(--card)] md:max-h-none md:w-[200px] md:border-r md:border-b-0">
         <FileTree
           key={`${threadId}:${reloadKey}`}
           threadId={threadId}
@@ -215,7 +215,7 @@ function WorkspaceBody({
             path={selectedPath}
           />
         ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-[13px] text-[var(--fg-muted)]">
+          <div className="flex h-full items-center justify-center px-6 text-center text-[13px] text-[var(--muted-foreground)]">
             从左侧选择一个文件编辑
           </div>
         )}

@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-        styles[status] ?? "bg-[var(--surface)] text-[var(--fg-muted)]"
+        styles[status] ?? "bg-[var(--card)] text-[var(--muted-foreground)]"
       }`}
     >
       {deploymentStatusLabel(status)}
@@ -45,7 +45,9 @@ function StatusBadge({ status }: { status: string }) {
 
 export function DeploymentPanel({ deployments }: { deployments: DeploymentRow[] }) {
   if (deployments.length === 0) {
-    return <div className="text-[13px] text-[var(--fg-muted)]">当前 thread 尚无部署记录。</div>;
+    return (
+      <div className="text-[13px] text-[var(--muted-foreground)]">当前 thread 尚无部署记录。</div>
+    );
   }
 
   return (
@@ -53,24 +55,26 @@ export function DeploymentPanel({ deployments }: { deployments: DeploymentRow[] 
       {deployments.map((d) => (
         <div
           key={d.id}
-          className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] p-3"
+          className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-3"
         >
           <div className="mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono font-medium text-[var(--fg)]">{d.environment}</span>
+              <span className="font-mono font-medium text-[var(--foreground)]">
+                {d.environment}
+              </span>
               <StatusBadge status={d.status} />
             </div>
-            <span className="text-[11px] text-[var(--fg-muted)]">
+            <span className="text-[11px] text-[var(--muted-foreground)]">
               {d.deployedAt
                 ? `部署于 ${d.deployedAt.toLocaleString()}`
                 : `创建于 ${d.createdAt.toLocaleString()}`}
             </span>
           </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[var(--fg-muted)]">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[var(--muted-foreground)]">
             {d.commitSha && (
               <>
                 <dt>commit</dt>
-                <dd className="font-mono text-[var(--fg)]">{d.commitSha.slice(0, 8)}</dd>
+                <dd className="font-mono text-[var(--foreground)]">{d.commitSha.slice(0, 8)}</dd>
               </>
             )}
             {d.imageTag && (

@@ -27,12 +27,12 @@ type BridgeState =
   | "reconnecting";
 
 const STATE_CONFIG: Record<BridgeState, { color: string; label: string; pulse?: boolean }> = {
-  disconnected: { color: "var(--fg-subtle)", label: "未连接" },
+  disconnected: { color: "var(--foreground-subtle)", label: "未连接" },
   connecting: { color: "var(--warning)", label: "连接中", pulse: true },
   connected: { color: "var(--info)", label: "已连接" },
   authenticated: { color: "var(--success)", label: "已认证" },
-  revoked: { color: "var(--danger)", label: "设备已撤销" },
-  protocol_mismatch: { color: "var(--danger)", label: "协议版本不兼容" },
+  revoked: { color: "var(--destructive)", label: "设备已撤销" },
+  protocol_mismatch: { color: "var(--destructive)", label: "协议版本不兼容" },
   reconnecting: { color: "var(--warning)", label: "重连中", pulse: true },
 };
 
@@ -83,7 +83,7 @@ export function BridgeStatus() {
 
   return (
     <div
-      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1"
+      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1"
       data-testid="bridge-status"
       data-state={state}
     >
@@ -91,7 +91,7 @@ export function BridgeStatus() {
         className={`inline-block h-2 w-2 rounded-full ${config.pulse ? "animate-pulse" : ""}`}
         style={{ backgroundColor: config.color }}
       />
-      <span className="text-[11px] font-medium text-[var(--fg-muted)]">{config.label}</span>
+      <span className="text-[11px] font-medium text-[var(--muted-foreground)]">{config.label}</span>
     </div>
   );
 }

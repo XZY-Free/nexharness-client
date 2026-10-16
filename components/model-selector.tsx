@@ -48,39 +48,39 @@ export function ModelSelector({
         onClick={() => setOpen((o) => !o)}
         className={
           compact
-            ? "flex max-w-[220px] items-center gap-2 rounded-[var(--radius)] px-3 py-1.5 text-left transition-all hover:bg-[var(--surface-2)] hover:scale-[1.02]"
-            : "flex w-full items-center justify-between gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left transition-all hover:border-[var(--primary)]/40 hover:shadow-[var(--shadow-sm)]"
+            ? "flex max-w-[220px] items-center gap-2 rounded-[var(--radius)] px-3 py-1.5 text-left transition-all hover:bg-[var(--muted)] hover:scale-[1.02]"
+            : "flex w-full items-center justify-between gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-left transition-all hover:border-[var(--primary)]/40 hover:shadow-[var(--shadow-sm)]"
         }
       >
-        <span className="truncate font-mono text-[13px] text-[var(--fg-muted)]">
+        <span className="truncate font-mono text-[13px] text-[var(--muted-foreground)]">
           {value || "选择模型"}
         </span>
         <Icon.chevron
           size={14}
-          className={`shrink-0 text-[var(--fg-subtle)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 text-[var(--foreground-subtle)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
         <div
-          className={`animate-pop absolute z-50 overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-pop)] ${
+          className={`animate-pop absolute z-50 overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-pop)] ${
             direction === "up" ? "bottom-full mb-2" : "top-full mt-2"
           } ${compact ? "right-0 w-[280px]" : "w-full"}`}
         >
           <div className="flex items-center gap-2 border-[var(--border)] border-b px-3 py-2">
-            <Icon.search size={14} className="shrink-0 text-[var(--fg-subtle)]" />
+            <Icon.search size={14} className="shrink-0 text-[var(--foreground-subtle)]" />
             <input
               // biome-ignore lint/a11y/noAutofocus: 浮层打开时聚焦搜索是预期交互
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="搜索模型…"
-              className="w-full bg-transparent font-mono text-[13px] outline-none placeholder:text-[var(--fg-subtle)]"
+              className="w-full bg-transparent font-mono text-[13px] outline-none placeholder:text-[var(--foreground-subtle)]"
             />
           </div>
           <div className="max-h-72 overflow-y-auto p-1">
             {filtered.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[var(--fg-subtle)] text-sm">
+              <div className="px-3 py-6 text-center text-[var(--foreground-subtle)] text-sm">
                 无匹配模型
               </div>
             ) : (
@@ -98,7 +98,7 @@ export function ModelSelector({
                     className={`flex w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left font-mono text-[13px] transition ${
                       active
                         ? "bg-[var(--accent-soft)] text-[var(--primary)]"
-                        : "text-[var(--fg)] hover:bg-[var(--surface-2)]"
+                        : "text-[var(--foreground)] hover:bg-[var(--muted)]"
                     }`}
                   >
                     <span className="truncate">{m.name ?? m.id}</span>
