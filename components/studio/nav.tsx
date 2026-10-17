@@ -78,7 +78,7 @@ const NAV_GROUPS: readonly NavGroup[] = [
         href: "/studio/capabilities",
         labelKey: "studio.nav.capabilities",
         icon: Blocks,
-        aliases: ["/studio/capabilities", "/studio/skills", "/studio/artifacts"],
+        aliases: ["/studio/capabilities", "/studio/skills", "/studio/tools", "/studio/artifacts"],
         navId: "capabilities",
       },
     ],

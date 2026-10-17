@@ -24,6 +24,11 @@ export default function CapabilitiesPage() {
           description="维护技能内容、版本和发布状态。"
         />
         <StudioSettingsLinkRow
+          href="/studio/tools"
+          title="工具与 MCP"
+          description="从能力市场同步工具与 MCP 服务，执行由市场承载。"
+        />
+        <StudioSettingsLinkRow
           href="/studio/agents"
           title="智能体"
           description="登记智能体，管理版本与员工侧发布。"

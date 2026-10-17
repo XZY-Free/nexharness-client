@@ -36,6 +36,7 @@ const StudioSecurityRoute = lazy(() => import("./routes/studio-security"));
 const StudioSettingsRoute = lazy(() => import("./routes/studio-settings"));
 const StudioSkillDetailRoute = lazy(() => import("./routes/studio-skill-detail"));
 const StudioSkillsRoute = lazy(() => import("./routes/studio-skills"));
+const StudioToolsRoute = lazy(() => import("./routes/studio-tools"));
 
 /** Studio 分包加载中的占位（保持与 StudioShell 相同的底色，避免闪白）。 */
 function StudioLoading() {
@@ -82,6 +83,7 @@ export function ClientApp() {
             <Route path="agents/:agent_id" element={<StudioAgentDetailRoute />} />
             <Route path="skills" element={<StudioSkillsRoute />} />
             <Route path="skills/:id" element={<StudioSkillDetailRoute />} />
+            <Route path="tools" element={<StudioToolsRoute />} />
           </Route>
           <Route path="*" element={<NotFoundView />} />
         </Route>
